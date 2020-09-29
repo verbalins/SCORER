@@ -1,0 +1,30 @@
+Package: SCORER
+Type: Package
+Title: What the Package Does (Title Case)
+Version: 0.1.0
+Author: Simon Lidberg
+Maintainer: The package maintainer <yourself@somewhere.net>
+Description: More about what it does (maybe more than one line)
+    Use four spaces when indenting paragraphs within the Description.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Depends: R (>= 2.10)
+Imports:
+    readr,
+    tidyr,
+    ggplot2,
+    dplyr,
+    BBmisc,
+    ecr,
+    plotly,
+    stringr,
+    ggtext,
+    tikzDevice,
+    stats,
+    tibble,
+    scales
+RoxygenNote: 7.1.1
+Roxygen: list(markdown = TRUE)
+Suggests: 
+    testthat
