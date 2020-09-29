@@ -40,9 +40,7 @@ ndsecr <- function(.data, objectives = attr(.data, "objectives")) {
 #' @param optData an OptResults class
 #' @param optGoals Optimization goals
 #'
-#' @return
-#'
-#' @examples
+#' @return Normalized values
 normalizeValues <- function(optData, optGoals) {
   # Make sure that the values are normalized and handled depending on maximize or minimize
 

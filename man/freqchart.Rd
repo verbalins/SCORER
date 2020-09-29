@@ -12,7 +12,13 @@ freqchart(
 )
 }
 \arguments{
-\item{data}{A dataset loaded with \code{\link[=loaddataset]{loaddataset()}}, and has ranks applied through \code{\link[=ndsecr]{ndsecr()}}}
+\item{.data}{The data, preferably loaded from \code{\link[=loaddataset]{loaddataset()}}}
+
+\item{objectives}{Which objectives to use, defaults to all}
+
+\item{rank}{The rank of the included solutions, inclusive}
+
+\item{n}{The number of bottlenecks to include}
 }
 \value{
 A ggplot2 object showing the frequencies of parameters

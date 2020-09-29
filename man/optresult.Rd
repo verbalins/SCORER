@@ -4,7 +4,7 @@
 \alias{optresult}
 \title{Title}
 \usage{
-optresult(data, opt_name, id, objectives, inputs, outputs)
+optresult(data, opt_name, id = 1, objectives, inputs, outputs)
 }
 \arguments{
 \item{data}{A tibble containing optimization results from OptimizeBrowser}

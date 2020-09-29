@@ -15,7 +15,7 @@ new_optresult <- function(data, opt_name, id, objectives, inputs, outputs) {
 #' @return An S3 class
 #' @export
 #'
-optresult <- function(data, opt_name, id, objectives, inputs, outputs) {
+optresult <- function(data, opt_name, id=1, objectives, inputs, outputs) {
   new_optresult(data, opt_name = opt_name, id = id, objectives = objectives, inputs = inputs, outputs = outputs)
 }
 

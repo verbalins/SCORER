@@ -12,7 +12,7 @@ normalizeValues(optData, optGoals)
 \item{optGoals}{Optimization goals}
 }
 \value{
-
+Normalized values
 }
 \description{
 Normalize values in the optimization data.

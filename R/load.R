@@ -1,10 +1,10 @@
-#' Loads optimization data and returns an OptResult class.
+#' Load optimization data
 #'
 #' @export
-#' @param file A file containing optimization data
+#' @param file A csv file containing formatted optimization data
+#'
 #' @return A dataframe with the data
 loaddataset <- function(filename, objectives, outputs, custom_outputs) {
-  # TODO: Enable the use of databases here also
   opt_info <- readr::read_lines(filename)
 
   # TODO: Evaluate if parameters are at the bottom.
@@ -13,7 +13,7 @@ loaddataset <- function(filename, objectives, outputs, custom_outputs) {
     paste(collapse = "\n") %>%
     readr::read_csv2() %>%
     dplyr::select(-Replications, -ConstraintViolation, maxOut = dplyr::starts_with("maxTP")) %>%
-    dplyr::select_if(function(x){!all(is.na(x))})
+    dplyr::select(where(function(x){!all(is.na(x))}))
 
   opt_info <- utils::tail(opt_info, 5) %>%
     paste(collapse = "\n")
