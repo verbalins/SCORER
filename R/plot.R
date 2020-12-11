@@ -40,7 +40,7 @@ freqchart <-
         mapping = ggplot2::aes(angle = 90),
         show.legend = FALSE,
         position = ggplot2::position_stack(vjust = 0.5),
-        label.padding = ggplot2::unit(c(0.25, 0.75, 0.25, 0.25), "lines")
+        label.padding = ggplot2::unit(c(0.25, 0.25, 0.25, 0.25), "lines")
       ) +
       ggplot2::labs(y = "Frequency",
                     x = "Parameter") +
