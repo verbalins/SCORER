@@ -1,10 +1,14 @@
 #' Load optimization data
 #'
 #' @export
-#' @param file A csv file containing formatted optimization data
+#' @param filename A csv file containing formatted optimization data from Opt
+#' @param objectives A character vector naming the objectives
+#' @param inputs A character vector naming the inputs
+#' @param outputs A character vector naming the ouputs
+#' @param custom_outputs A character vector describing custom outputs
 #'
 #' @return A dataframe with the data
-loaddataset <- function(filename, objectives, outputs, custom_outputs) {
+loaddataset <- function(filename, objectives, inputs, outputs, custom_outputs) {
   opt_info <- readr::read_lines(filename)
 
   # TODO: Evaluate if parameters are at the bottom.
@@ -36,13 +40,20 @@ loaddataset <- function(filename, objectives, outputs, custom_outputs) {
     dplyr::select_if(grepl("Min|Max", .)) %>%
     grepl("Max", .)
 
-
   names(opt_objectives) <- utils::head(stringr::str_replace(opt_parameters, "maxTP", "maxOut"), length(opt_objectives))
 
   opt_parameters <- utils::tail(opt_parameters, -length(opt_objectives))
 
   # TODO: Change this to enable importing of custom optimization examples
-  inputs <- grep("^imp_", opt_parameters, value = TRUE)
+  if (length(inputs)==0) {
+    # Try general SCORE naming
+    if (grep("^imp_", opt_parameters)) {
+      inputs <- grep("^imp_", opt_parameters, value = TRUE)
+    } else {
+      # Set inputs to everything other than outputs and objectives
+
+    }
+  }
 
   outputs <- opt_parameters[!(opt_parameters %in% inputs)]
 
