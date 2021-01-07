@@ -1,13 +1,15 @@
 Package: SCORER
-Title: What the Package Does (Title Case)
 Version: 0.0.0.9000
+Date: 2020-12-18
+Title: What the Package Does (Title Case)
 Authors@R: 
     person(given = "Simon",
            family = "Lidberg",
            role = c("aut", "cre"),
            email = "simon.lidberg@his.se",
            comment = c(ORCID = "0000-0003-1215-152X"))
-Maintainer: Simon Lidberg simon.lidberg@gmail.com
+Author: Simon Lidberg [aut, cre]
+Maintainer: Simon Lidberg <simon.lidberg@gmail.com>
 Description: More about what it does (maybe more than one line)
     Use four spaces when indenting paragraphs within the Description.
 License: MIT + file LICENSE
@@ -29,7 +31,9 @@ Imports:
     tikzDevice,
     stats,
     tibble,
-    scales
+    scales,
+    NbClust,
+    shiny
 RoxygenNote: 7.1.1
 Roxygen: list(markdown = TRUE)
 Suggests: 

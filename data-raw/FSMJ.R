@@ -8,3 +8,8 @@ outputs <- c("WaitingParts","WIP_A","WIP_B","WIP_C","WIP_D","WIP_AA","WIP_FA","L
 FSMJ <- SCORER::loaddataset("inst/extdata/FSMJ_data.csv", inputs = params, outputs = outputs)
 
 usethis::use_data(FSMJ, compress="xz", overwrite = TRUE)
+
+FSMJ_clusters <- FSMJ %>% addDistances(parallelCores = 10) %>% partitioning(nrClusters = 6)
+
+usethis::use_data(FSMJ_clusters, compress="xz", overwrite = TRUE)
+

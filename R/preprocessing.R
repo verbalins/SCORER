@@ -55,4 +55,4 @@ euclidean_distance_vector <- function(x,y) {
   x <- x %>% dplyr::select(names(attr(y, "objectives")))
   x <- x[rep(seq_len(nrow(x)), times=nrow(y)),]
   min(sqrt(rowSums((x-y)**2)))
-}z
+}
