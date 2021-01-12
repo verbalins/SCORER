@@ -15,7 +15,7 @@ loaddataset <- function(filename, objectives, inputs, outputs, custom_outputs) {
   # If so, extract them
   opt <- head(opt_info, -5) %>%
     paste(collapse = "\n") %>%
-    readr::read_csv2() %>%
+    readr::read_delim(delim=";") %>%
     dplyr::select(-Replications, -ConstraintViolation, maxOut = dplyr::starts_with("maxTP")) %>%
     dplyr::select(where(function(x){!all(is.na(x))}))
 
@@ -23,11 +23,11 @@ loaddataset <- function(filename, objectives, inputs, outputs, custom_outputs) {
     paste(collapse = "\n")
 
   opt_id <- opt_info %>%
-    readr::read_csv2(n_max = 1, col_names = FALSE) %>%
+    readr::read_delim(delim=";", n_max = 1, col_names = FALSE) %>%
     dplyr::pull(2)
 
   opt_parameters <- opt_info %>%
-    readr::read_csv2(skip = 2, n_max = 1, col_names = FALSE) %>%
+    readr::read_delim(delim=";", skip = 2, n_max = 1, col_names = FALSE) %>%
     dplyr::select(!!-1, -((length(.)-1):length(.))) %>%
     dplyr::slice() %>%
     unlist(., use.names = FALSE)
@@ -36,7 +36,7 @@ loaddataset <- function(filename, objectives, inputs, outputs, custom_outputs) {
   #  readr::read_csv2(skip = 3, n_max = 1, col_names = FALSE)
 
   opt_objectives <- opt_info %>%
-    readr::read_csv2(skip = 4, n_max = 1, col_names = FALSE) %>%
+    readr::read_delim(delim=";", skip = 4, n_max = 1, col_names = FALSE) %>%
     dplyr::select_if(grepl("Min|Max", .)) %>%
     grepl("Max", .)
 
