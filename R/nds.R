@@ -19,7 +19,7 @@ ndsecr <- function(.data, objectives = attr(.data, "objectives")) {
     }
   }
   cat("Performing NDS with objectives:", "\n", names(objectives), "\n")
-
+  limits <- sapply(.data[,names(objectives)], function(x) {c(min(x), max(x))})
   normalizedData <- normalizeValues(.data[,names(objectives)], objectives)
   optData <- as.matrix(normalizedData)
 
@@ -37,20 +37,45 @@ ndsecr <- function(.data, objectives = attr(.data, "objectives")) {
 
 #' Normalize values in the optimization data.
 #'
-#' @param optData an OptResults class
+#' @param .data an OptResults class
 #' @param optGoals Optimization goals
 #'
 #' @return Normalized values
-normalizeValues <- function(optData, optGoals) {
+normalizeValues <- function(.data, optGoals, limits=NULL) {
   # Make sure that the values are normalized and handled depending on maximize or minimize
+  if (is.null(optGoals)) {
+    optGoals <- attr(.data, "objectives")
+  }
 
   # Normalize and invert if necessary
-  # Start with invert
-  for (i in seq(length(optGoals))) {
-    if (optGoals[i]) {
-      optData[,i] <- 1/optData[,i]
+  # Start with inverting maximization goals
+  # for (i in seq(length(optGoals))) {
+  #   if (optGoals[i]) {
+  #     .data[,i] <- 1/.data[,i]
+  #   }
+  # }
+
+  if(is.null(limits)){
+    # Normalize by standard range
+    .data <- BBmisc::normalize(.data, method = "range", margin = 2)
+  } else {
+    # Normalize by custom limits
+    for (obj_name in names(optGoals)) {
+      test <- BBmisc::normalize(.data[,obj_name], method = "range", margin = 2, range = c(limits[,obj_name][1],limits[,obj_name][2]))
+      .data[,obj_name] <- test
     }
   }
-  # Normalize
-  optData <- BBmisc::normalize(optData, method = "range", margin = 2)
+  .data
 }
+
+# denormalizeValues <- function(.data, objectives, limits) {
+#   for (obj_name in names(objectives)) {
+#     max_ <- max(.data[,obj_name])
+#     min_ <- min(.data[,obj_name])
+#     a <- (limits[2,obj_name]-limits[1,obj_name])/(max_ - min_)
+#     b <- limits[2,obj_name] - a * max_
+#     .data[,obj_name] <- a * .data[,obj_name] + b
+#   }
+#
+#   .data
+# }

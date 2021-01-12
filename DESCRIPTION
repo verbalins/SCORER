@@ -33,7 +33,8 @@ Imports:
     tibble,
     scales,
     NbClust,
-    shiny
+    shiny,
+    shinydashboard
 RoxygenNote: 7.1.1
 Roxygen: list(markdown = TRUE)
 Suggests: 

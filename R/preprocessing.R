@@ -3,6 +3,7 @@
 #     Pareto-optimal solutions have Rank 1, placed in Y
 addDistances <- function(.data, parallelCores = 0) {
   objectives = attr(.data, "objectives")
+  limits <- sapply(.data[,names(objectives)], function(x) {c(min(x), max(x))})
   .data[,names(objectives)] <- normalizeValues(.data[,names(objectives)], objectives)
 
   # Extract the interpolant, i.e., the non-dominated solutions.
@@ -43,11 +44,14 @@ addDistances <- function(.data, parallelCores = 0) {
       dplyr::arrange(Iteration)
 
   } else {
-    res <- .data %>%
+    .data <- .data %>%
       dplyr::rowwise() %>%
       dplyr::mutate(Distance = (Rank != 1) * euclidean_distance_vector(dplyr::cur_data(), interpolant)) %>%
       dplyr::ungroup()
   }
+
+  .data[,names(objectives)] <- .data[,names(objectives)] %>% normalizeValues(objectives, limits)
+  .data
 }
 
 # Private functions

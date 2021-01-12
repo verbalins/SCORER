@@ -31,21 +31,30 @@ workspace <- function() {
                     dimensions = create_dimensions_list(.))
 }
 
-tidy_clust <- function(nrClusters = 10) {
-  tibble::tibble(k = 1:10) %>%
+tidy_clust <- function(.dat, nrClusters = 10) {
+  kclusts <- tibble::tibble(k = 1:10) %>%
     dplyr::mutate(
-      kclust = purrr::map(k, ~kmeans(FSMJ, .x)),
+      kclust = purrr::map(k, ~kmeans(.dat, .x)),
       tidied = purrr::map(kclust, broom::tidy),
       glanced = purrr::map(kclust, broom::glance),
-      augmented = purrr::map(kclust, broom::augment, FSMJ)
+      augmented = purrr::map(kclust, broom::augment, .dat)
     )
+
+  clusters <- kclusts %>% tidyr::unnest(cols = c(tidied))
+  assignments <- kclusts %>% tidyr::unnest(cols = c(augmented))
+  clusterings <- kclusts %>% tidyr::unnest(cols = c(glanced))
+
+  ggplot2::ggplot(clusterings, ggplot2::aes(k, tot.withinss)) +
+    ggplot2::geom_line() +
+    ggplot2::geom_point()
+
 }
 
 partitioning <- function(.data, nrClusters = 5, parameters = c(names(attr(.data,"objectives")))) {
-  t <- df %>% dplyr::select(parameters)
+  t <- .data %>% dplyr::select(parameters)
 
   # TODO: Help with determining cluster size
-  fit <- kmeans(t, nrClusters)
+  fit <- kmeans(t, nrClusters, nstart = 10)
 
-  .data <- df %>% dplyr::mutate(Cluster = fit$cluster)
+  .data <- .data %>% dplyr::mutate(Cluster = fit$cluster)
 }
