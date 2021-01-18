@@ -8,26 +8,28 @@
 #' @param custom_outputs A character vector describing custom outputs
 #'
 #' @return A dataframe with the data
-loaddataset <- function(filename, objectives, inputs, outputs, custom_outputs) {
-  opt_info <- readr::read_lines(filename)
+loaddataset <- function(filename, objectives=NULL, inputs=NULL, outputs=NULL, custom_outputs=NULL) {
+  opt_info <- readr::read_lines(filename,skip_empty_rows = T) %>% stringr::str_replace_all("[\r\n]", "")
+
+  opt <- opt_info %>%
+    #paste(collapse = "\n") %>%
+    utils::head(.,-4) %>%
+    readr::read_delim(delim=";",trim_ws = T) %>%
+    dplyr::select(-dplyr::any_of(c("Replications", "ConstraintViolation")), maxOut = dplyr::starts_with("maxTP")) %>%
+    dplyr::select(where(function(x){!all(is.na(x))}))
 
   # TODO: Evaluate if parameters are at the bottom.
   # If so, extract them
-  opt <- head(opt_info, -5) %>%
-    paste(collapse = "\n") %>%
-    readr::read_delim(delim=";") %>%
-    dplyr::select(-Replications, -ConstraintViolation, maxOut = dplyr::starts_with("maxTP")) %>%
-    dplyr::select(where(function(x){!all(is.na(x))}))
-
-  opt_info <- utils::tail(opt_info, 5) %>%
+  opt_info <- opt_info %>%
+    utils::tail(., 4) %>%
     paste(collapse = "\n")
 
   opt_id <- opt_info %>%
-    readr::read_delim(delim=";", n_max = 1, col_names = FALSE) %>%
+    readr::read_delim(delim=";", n_max = 1, col_names = FALSE,trim_ws = T) %>%
     dplyr::pull(2)
 
   opt_parameters <- opt_info %>%
-    readr::read_delim(delim=";", skip = 2, n_max = 1, col_names = FALSE) %>%
+    readr::read_delim(delim=";", skip = 1, n_max = 1, col_names = FALSE,trim_ws = T) %>%
     dplyr::select(!!-1, -((length(.)-1):length(.))) %>%
     dplyr::slice() %>%
     unlist(., use.names = FALSE)
@@ -36,7 +38,7 @@ loaddataset <- function(filename, objectives, inputs, outputs, custom_outputs) {
   #  readr::read_csv2(skip = 3, n_max = 1, col_names = FALSE)
 
   opt_objectives <- opt_info %>%
-    readr::read_delim(delim=";", skip = 4, n_max = 1, col_names = FALSE) %>%
+    readr::read_delim(delim=";", skip = 3, n_max = 1, col_names = FALSE,trim_ws = T) %>%
     dplyr::select_if(grepl("Min|Max", .)) %>%
     grepl("Max", .)
 
@@ -45,7 +47,7 @@ loaddataset <- function(filename, objectives, inputs, outputs, custom_outputs) {
   opt_parameters <- utils::tail(opt_parameters, -length(opt_objectives))
 
   # TODO: Change this to enable importing of custom optimization examples
-  if (length(inputs)==0) {
+  if (is.null(inputs) || length(inputs)==0) {
     # Try general SCORE naming
     if (grep("^imp_", opt_parameters)) {
       inputs <- grep("^imp_", opt_parameters, value = TRUE)
