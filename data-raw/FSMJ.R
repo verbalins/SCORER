@@ -9,8 +9,19 @@ FSMJ <- SCORER::loaddataset("inst/extdata/FSMJ_data.csv", inputs = inputs, outpu
 
 usethis::use_data(FSMJ, compress="xz", overwrite = TRUE)
 
-FSMJ_clusters <- FSMJ %>%
-  addDistances(parallelCores = 10) %>%
+FSMJ_dist <- FSMJ %>%
+  addDistances(parallelCores = 10)
+
+usethis::use_data(FSMJ_dist, compress="xz", overwrite = TRUE)
+
+FSMJ_clusters <- FSMJ_dist %>%
   partitioning(nrClusters = 6, parameters = c("Distance",names(attr(.,"objectives"))))
 
 usethis::use_data(FSMJ_clusters, compress="xz", overwrite = TRUE)
+
+
+inputs <- c("B1","B2","S1","A1","A2","A3","A4","A5","S2")
+
+FMC <- SCORER::loaddataset("inst/extdata/WSC11.csv", inputs = inputs, objectives = c("Investment", "TP"))
+
+usethis::use_data(FMC, compress="xz", overwrite = TRUE)
