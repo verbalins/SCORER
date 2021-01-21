@@ -1,6 +1,12 @@
 #S3 implementation
-new_optresult <- function(data, opt_name, id, objectives, inputs, outputs) {
-  tibble::validate_tibble(tibble::new_tibble(data, class = "OptResult", opt_name = opt_name, id = id, objectives = objectives, inputs = inputs, outputs = outputs))
+new_optresult <- function(data, opt_name, id, objectives, inputs, outputs, parameters) {
+  tibble::validate_tibble(tibble::new_tibble(data, class = "OptResult",
+                                             opt_name = opt_name,
+                                             id = id,
+                                             objectives = objectives,
+                                             inputs = inputs,
+                                             outputs = outputs,
+                                             parameters = parameters))
 }
 
 #' Title
@@ -15,8 +21,8 @@ new_optresult <- function(data, opt_name, id, objectives, inputs, outputs) {
 #' @return An S3 class
 #' @export
 #'
-optresult <- function(data, opt_name, id=1, objectives, inputs, outputs) {
-  new_optresult(data, opt_name = opt_name, id = id, objectives = objectives, inputs = inputs, outputs = outputs)
+optresult <- function(data, opt_name, id=1, objectives, inputs, outputs, parameters) {
+  new_optresult(data, opt_name = opt_name, id = id, objectives = objectives, inputs = inputs, outputs = outputs, parameters = parameters)
 }
 
 
