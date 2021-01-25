@@ -12,6 +12,8 @@ def FPM(minimumSig, parameterNames, selectedData, unselectedData, useEquality = 
     """
     if isinstance(selectedData, pandas.DataFrame):
         selectedData = selectedData.values
+    
+    if isinstance(unselectedData, pandas.DataFrame):
         unselectedData = unselectedData.values
 
     if len(selectedData) == 0:
@@ -127,6 +129,7 @@ def FPM(minimumSig, parameterNames, selectedData, unselectedData, useEquality = 
         r.Significance = mdr.Significance / 100.0
         r.UnselectedSignificance = mdr.UnSignificance / 100.0
         r.Value = mdr.Column.GeneratedRule.Value
+        r.Ratio = mdr.Value
         
         if r.Significance >= minimumSig:
             rules.append(r)
@@ -178,7 +181,7 @@ def MakeMdr(column, minSig, noSelMembers, noUnselMembers):
     
     mdr = lambda: None 
     mdr.Column = column
-    mdr.Significance = (column.TruePositives*100.0) / noSelMembers
+    mdr.Significance = (column.TruePositives * 100.0) / noSelMembers
     mdr.UnSignificance = (column.FalsePositives * 100.0) / noUnselMembers
     
     mdr.Value = 0.0
@@ -190,5 +193,11 @@ def MakeMdr(column, minSig, noSelMembers, noUnselMembers):
 def ExportRules(rules):
     df_rules = pandas.DataFrame(columns=['Parameter', 'Sign', 'Value', 'SEL', 'UNSEL', 'Ratio'])
     for rule in rules:
-        df_rules.loc[len(df_rules)] = [rule.ParameterName, rule.Sign, rule.Value, rule.Significance, rule.UnselectedSignificance, rule.Significance / rule.UnselectedSignificance]
+        df_rules.loc[len(df_rules)] = [rule.ParameterName, rule.Sign, rule.Value, rule.Significance, rule.UnselectedSignificance, rule.Ratio]
     return(df_rules)
+
+#sel = pandas.read_csv("../selected.csv")
+#unsel = pandas.read_csv("../unselected.csv")
+
+#rules = FPM(0.5, list(sel.iloc[:,5:14]), sel.iloc[:,5:14].values, unsel.iloc[:,5:14].values, True)
+#print(ExportRules(rules))
