@@ -40,6 +40,7 @@
 
 set.seed(42)
 options(shiny.maxRequestSize = 30*1024^2) # 30MB
+reticulate::source_python('../py/FPM.py')
 
 #df <- FSMJ_clusters %>% normalizeValues(attr(., "objectives")) %>% dplyr::select(c(.$inputs,.$objectives,Cluster,Distance,Rank))
 #df <- FSMJ_clusters %>% dplyr::select(Iteration,c(.$inputs,.$objectives,Cluster,Distance,Rank))
@@ -62,8 +63,7 @@ importUI <- shiny::fluidPage(
                                  ".csv"))
         )
     ),
-    shiny::fluidRow(
-        shinydashboard::box(title="Select Parameters", width = NULL,
+    shiny::fluidRow(shinydashboard::box(title="Select Parameters", width = NULL,
                             shiny::uiOutput("data_objectives"),
                             shiny::uiOutput("data_inputs"),
                             shiny::uiOutput("data_outputs"),
@@ -118,15 +118,17 @@ clusterUI <- shiny::fillPage(
                                 shiny::tabPanel("rpart",
                                                 ),
                                 shiny::tabPanel("kmeans",
+                                    shiny::numericInput("numClust", "Clusters:", 5, min = 2, max=10),
                                                 ),
                                 shiny::tabPanel("clara",
                                                 ),
                                 shiny::tabPanel("hclust",
                                                 ),
                                 shiny::tabPanel("dbscan",
-                                                )),
+                                    shiny::numericInput("minpts", "MinPts:", 5, min=1, step=1),
+                                    shiny::numericInput("eps", "eps:", 0.1, min=0, step=0.01),
+                                    shiny::actionButton("evalClusPerf", "Evaluate eps"))),
                             shiny::actionButton("evalClusters", "Evaluate clusters"),
-                            shiny::numericInput("numClust", "Clusters:", 5, min = 2, max=10),
                             shiny::actionButton("saveClusters", "Apply clusters"))
     ),
     shiny::fluidRow(
@@ -169,19 +171,32 @@ visualizationUI <- shiny::fillPage(
 ruleUI <- shiny::fillPage(
     # Decision trees
     # FPM, through python right now
-    shinydashboard::box(
-        shiny::checkboxInput("test", "test"),
-        shiny::tabsetPanel(id="ruleTab", type = "tabs",
-                       tabPanel("Hierarchical"
+    shiny::fluidRow(
+        shinydashboard::box(
+            shiny::checkboxInput("test", "test"),
+            shiny::tabsetPanel(id="ruleTab", type = "tabs",
+                           tabPanel("Hierarchical"
 
-                                ),
-                       tabPanel("FPM",
-                                )
+                                    ),
+                           tabPanel("FPM",
+                                    # Minimum significance
+                                shiny::numericInput("minsig", "Minimum Significance", 0.5, 0.1, 1.0, 0.1),
+                                shiny::numericInput("fpmlevel", "Rule levels", 1, 1, 4, 1)
+                                    )
+            ),
+            shiny::actionButton("rulebutton", "Create Rules")
         ),
-        shiny::actionButton("rulebutton", "Create Rules")
+        shinydashboard::box(
+            #shinycssloaders::withSpinner(shiny::tableOutput("ruletable"))
+        )
     ),
-    shinydashboard::box(
-        shinycssloaders::withSpinner(shiny::tableOutput("ruletable"))
+    shiny::fluidRow(
+        shinydashboard::box(title="PyFPM",
+            shinycssloaders::withSpinner(shiny::tableOutput("pyruletable"))
+        ),
+        shinydashboard::box(title="RFPM",
+            shinycssloaders::withSpinner(shiny::tableOutput("ruletable"))
+        )
     )
 )
 
@@ -277,7 +292,7 @@ server <- function(input, output, session) {
             #parcoords_headers$headers <- c(current_data()$objectives),attr(current_data(),"inputs"))
             # Reset filters on Visualization tab
             ranges$data <- NULL
-            brush_ranges$data <- NULL
+            selected_points$data <- NULL
         }
     })
 
@@ -308,10 +323,10 @@ server <- function(input, output, session) {
 
     shiny::observeEvent(input$applyfilter, {
         ranges$data <- NULL
-        brush_ranges$data <- NULL
+        selected_points$data <- NULL
     })
 
-    ### Cluster logic
+    ### Cluster logic ------------------------------------------
     output$clusterDep <- shiny::renderUI({
         shiny::selectInput("clusterDep", "Dependent variables:", dim_list(), selected=dim_list()$Objectives, multiple = T)
     })
@@ -320,26 +335,55 @@ server <- function(input, output, session) {
         shiny::selectInput("clusterInDep", "Independent variables:", dim_list(), selected=dim_list()$Inputs, multiple = T)
     })
 
-    shiny::observeEvent(input$evalClusters, {
-        # Evaluate the number of clusters to use.
-
-        # Ask to scale data here
+    shiny::observeEvent(input$evalClusPerf, {
+        # Ask to scale data
         cluster_data$data <- current_data() %>% dplyr::select(input$clusterDep, input$clusterInDep)
         if (input$scaleDep) {
             cluster_data$data <- cluster_data$data %>%
                 dplyr::mutate(dplyr::across(input$clusterDep,collapse::fscale))
         }
 
-        if(input$clustermethod=="kmeans") {
+        if (input$clustTab == "dbscan") {
+            output$clusterViz <- shiny::renderPlot({
+                dbscan::kNNdistplot(cluster_data$data, k=input$minpts)
+            })
+        }
+    })
 
-        } else if(input$clustermethod=="clara") {
+    shiny::observeEvent(input$evalClusters, {
+        # Evaluate the number of clusters to use.
+        # Ask to scale data
+        cluster_data$data <- current_data() %>% dplyr::select(input$clusterDep, input$clusterInDep)
+        if (input$scaleDep) {
+            cluster_data$data <- cluster_data$data %>%
+                dplyr::mutate(dplyr::across(input$clusterDep,collapse::fscale))
+        }
+        if(input$clustTab=="kmeans") {
+            kclusts <- tibble::tibble(k = 1:10) %>%
+                dplyr::mutate(
+                    kclust = purrr::map(k, ~kmeans(., .x)),
+                    tidied = purrr::map(kclust, broom::tidy),
+                    glanced = purrr::map(kclust, broom::glance),
+                    augmented = purrr::map(kclust, broom::augment, .)
+                )
+
+            clusters <- kclusts %>% tidyr::unnest(cols = c(tidied))
+            assignments <- kclusts %>% tidyr::unnest(cols = c(augmented))
+            clusterings <- kclusts %>% tidyr::unnest(cols = c(glanced))
+
+            output$clusterViz <- shiny::renderPlot({
+            ggplot2::ggplot(clusterings, ggplot2::aes(k, tot.withinss)) +
+                ggplot2::geom_line() +
+                ggplot2::geom_point()
+            })
+        } else if(input$clustTab=="clara") {
             cluster.suggestion <- factoextra::fviz_nbclust(cluster_data$data, FUNcluster = cluster::clara)
             output$clusterViz <- shiny::renderPlot({
                 cluster.suggestion
             })
-        } else if (input$clustermethod=="hclust") {
-            cluster_data$hclust <- fastcluster::hclust.vector(current_data())
-        } else if (input$clustermethod=="rpart") {
+        } else if (input$clustTab=="hclust") {
+            cluster_data$hclust <- fastcluster::hclust.vector(cluster_data$data)
+        } else if (input$clustTab=="rpart") {
             part.data <- cluster_data$data
             form <- as.formula(paste(paste(input$clusterDep, collapse="+"), " ~ ",paste(input$clusterInDep,collapse = "+"),collapse=" "))
             rprt <- rpart::rpart(form, data=part.data, model=T)
@@ -347,10 +391,13 @@ server <- function(input, output, session) {
             output$clusterViz <- shiny::renderPlot({
                 rpart.plot::rpart.plot(rprt)
             })
-        } else { # dbscan
-            k <- length(input$clusterDep) + 1
+        } else {
+            res <- dbscan::dbscan(cluster_data$data, eps = input$eps, minPts = input$minpts)
+            cluster_data$dbscan <- res$cluster
+            res$cluster
             output$clusterViz <- shiny::renderPlot({
-                dbscan::kNNdistplot(cluster_data$data, k)
+                ggplot2::ggplot(as.data.frame(cluster_data$data), ggplot2::aes_string(input$clusterDep[1], input$clusterDep[2], col=res$cluster)) +
+                    ggplot2::geom_point()
             })
         }
         # Send output to renderText("clusterText")
@@ -358,19 +405,21 @@ server <- function(input, output, session) {
 
     shiny::observeEvent(input$saveClusters, {
         # Apply the clustering
-        if (input$clustermethod=="kmeans") {
+        if (input$clustTab=="kmeans") {
             cluster_data$kmeans <- kmeans(current$data$Objectives, centers=input$numClust)
-        } else if(input$clustermethod=="clara") {
-            cluster_data$clara <- cluster::clara(current_data(), k=input$numClust, stand=T, samples=500, pamLike = T)
+        } else if(input$clustTab=="clara") {
+            cluster_data$clara <- cluster::clara(cluster_data$data, k=input$numClust, stand=T, samples=500, pamLike = T)
             clust <- cluster_data$clara$clustering
-        } else if (input$clustermethod=="hclust") {
-        } else if (input$clustermethod=="rpart") {
+        } else if (input$clustTab=="hclust") {
+        } else if (input$clustTab=="rpart") {
             # Use input$numClust to prune the tree approximately to the number of clusters
 
-        } else {
-
+        } else { #dbscan
+            res <- dbscan::dbscan(cluster_data$data, eps = input$eps, minPts = input$minpts)
+            clust <- res$cluster
         }
-        current_data() <- current_data() %>% dplyr::mutate(Cluster = clust)
+        uploaded_data$data <- current_data() %>% dplyr::mutate(Cluster = clust)
+        shiny::updateSelectInput(session, "color", choices = c())
     })
 
     ### Visualization logic
@@ -458,7 +507,7 @@ server <- function(input, output, session) {
             plotly::layout(updatemenus = list(
                                list(
                                    type = "buttons",
-                                   y = 0.8,
+                                   x = 1,
                                    buttons = list(
                                        list(method = "restyle",
                                             args = list("visible", c(T,T)),
@@ -509,7 +558,7 @@ server <- function(input, output, session) {
         } else {
             list(as.numeric(info))
         }
-        brush_ranges$data <- NULL
+        selected_points$data <- NULL
     })
 
     # filter the dataset down to the rows that match the selection ranges
@@ -529,22 +578,16 @@ server <- function(input, output, session) {
             }
             keep <- keep & keep_var
         }
-        for (i in names(brush_ranges$data)) {
-            range_ <- brush_ranges$data[[i]]
-            keep_var <- FALSE
-            if (is.null(range_)) # When deselecting
-                keep_var <- TRUE
-            else {
-                plotnumber <- as.numeric(substring(names(brush_ranges$data),5))
-                keep_var <- keep_var | dplyr::between(df_filtered()[[dim_list()$Objectives[[1]]]], min(range_$x), max(range_$x))
-                keep_var <- keep_var & dplyr::between(df_filtered()[[dim_list()$Objectives[[plotnumber+1]]]], min(range_$y), max(range_$y))
-            }
-            keep <- keep & keep_var
+        parcoords_sel <- df_filtered()[keep, ]
+
+        for (i in names(selected_points$data)) {
+            parcoords_sel <- parcoords_sel %>% dplyr::filter(Iteration %in% unlist(selected_points$data[i]))
         }
+
         if(!is.null(input$colorslider) && input$color %in% colnames(df_filtered())) {
-            df_filterdata$sel <- df_filtered()[keep, ] %>% dplyr::filter(dplyr::between(.[[input$color]], input$colorslider[1], input$colorslider[2]))
+            df_filterdata$sel <- parcoords_sel %>% dplyr::filter(dplyr::between(.[[input$color]], input$colorslider[1], input$colorslider[2]))
         } else {
-            df_filterdata$sel <- df_filtered()[keep, ]
+            df_filterdata$sel <- parcoords_sel
         }
         df_filterdata$unsel <- dplyr::anti_join(df_filtered(), df_filterdata$sel, by="Iteration")
         df_filterdata
@@ -552,7 +595,7 @@ server <- function(input, output, session) {
 
     # These reactive values track the set of active brushes
     # Each reactive value corresponds to a different variable
-    brush_ranges <- shiny::reactiveValues('data' = list())
+    selected_points <- shiny::reactiveValues('data' = list())
 
     output$plots2d <- renderUI({
         plot_output_list <- lapply(1:length(dim_list()$Objectives), function(i) {
@@ -600,7 +643,7 @@ server <- function(input, output, session) {
                     plotly::layout(updatemenus = list(
                         list(
                             type = "buttons",
-                            y = 0.8,
+                            x = 1,
                             buttons = list(
                                 list(method = "restyle",
                                      args = list("visible", c(T,T)),
@@ -608,7 +651,6 @@ server <- function(input, output, session) {
                                      label = "Toggle filtered"))))) %>%
                     plotly::toWebGL() %>%
                     plotly::hide_colorbar() %>%
-                    plotly::event_register(event="plotly_brushed") %>%
                     plotly::event_register("plotly_doubleclick")
             })
         })
@@ -616,20 +658,24 @@ server <- function(input, output, session) {
     })
 
     lapply(paste0("plot", seq(1,4)), function(nm) {
-        shiny::observeEvent(plotly::event_data("plotly_brushed", source=nm), {
+        shiny::observeEvent(plotly::event_data("plotly_selected", source=nm), {
         # inform the world about the new brush range
 
-            brushed <- plotly::event_data("plotly_brushed", source=nm)
-            if (is.null(brushed)){
-                brush_ranges$data <- NULL
+            selected <- plotly::event_data("plotly_selected", source=nm)
+            if (is.null(selected)){
+                selected_points$data <- NULL
             } else {
-                brush_ranges$data[[nm]] <- brushed
+                selected_points$data[[nm]] <- selected$customdata
             }
+        })
+        shiny::observeEvent(plotly::event_data("plotly_doubleclick", source=nm), {
+            # inform the world about the new brush range
+            selected_points$data <- NULL
         })
     })
 
     shiny::observeEvent(input$reset, {
-        brush_ranges$data <- NULL
+        selected_points$data <- NULL
         # plotly::plotlyProxy(nm, session) %>%
         #     plotly::plotlyProxyInvoke("restyle", "data", df_selected())
     })
@@ -639,14 +685,29 @@ server <- function(input, output, session) {
         sel <- df_selected()$sel %>% dplyr::select(.$inputs) %>% as.data.frame()
         unsel <- df_selected()$unsel %>% dplyr::select(.$inputs) %>% as.data.frame()
 
-        rules <- ExportRules(
-            FPM(minimumSig=0.5,
+        pyrules <- ExportRules(
+            FPM(minimumSig=input$minsig,
                 parameterNames=colnames(sel),
                 selectedData=sel,
                 unselectedData=unsel,
                 useEquality=TRUE))
+
+        rules <- fpm(df_filtered(), maxLevel = input$fpmlevel, minSig = input$minsig, selectedData = df_selected()$sel$Iteration)
+
         output$ruletable <- shiny::renderTable({
-            rules
+            rules %>% dplyr::mutate(Significance = Significance*100,
+                                    Unsignificance = Unsignificance*100,
+                                    Ratio = Ratio * 100) %>%
+                dplyr::select(Rule, Significance, Unsignificance, Ratio) %>%
+                head(10)
+        })
+        output$pyruletable <- shiny::renderTable({
+            pyrules %>% dplyr::mutate(Rule = paste(Parameter, Sign, round(Value,0)),
+                                      Significance = SEL*100,
+                                      Unsignificance = UNSEL*100,
+                                      Ratio = Ratio*100) %>%
+                dplyr::select(Rule, Significance, Unsignificance, Ratio) %>%
+                head(10)
         })
     })
 }
