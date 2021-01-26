@@ -45,7 +45,7 @@ fpm <- function(.data, maxLevel = 1, minSig = 0.5, selectedData=NULL, unselected
   }
 
   #all_rules[[1]] <- lapply(all_rules[[2:length(all_rules)]], head(10))
-  return(do.call(rbind, lapply(all_rules, head, 10)) %>% dplyr::arrange(desc(Ratio)))
+  return(do.call(rbind, lapply(all_rules, head, 15)) %>% dplyr::arrange(desc(Ratio)))
 }
 
 create_rules <- function(data, level, minSig, selectedData) {
@@ -60,18 +60,25 @@ create_rules <- function(data, level, minSig, selectedData) {
                         Significance = Sel/length(selectedData),
                         Unsignificance = Unsel/(nrow(data)-length(selectedData)),
                         Ratio = dplyr::if_else(Significance >= minSig,
-                                               (Significance*100)/(Unsignificance*100), 0.0)) %>%
+                                               (Sel)/(Unsel), 0.0)) %>%
     dplyr::filter(Ratio > 0)
 
   if (level == 1) {
     tib <- tib %>% dplyr::arrange(desc(Ratio), Sign) %>%
       dplyr::select(-Sign) %>%
-      dplyr::distinct(Ratio, .keep_all = TRUE)
+      dplyr::distinct(Significance, Ratio, .keep_all = TRUE)
   } else {
     tib <- tib %>%
       dplyr::select(-Sign) %>%
       dplyr::arrange(desc(Ratio))
   }
+  # Keep only the most informative rule for each variable
+  tib <- tib %>%
+    tidyr::separate(Rule, sep=" ", into = c("Var", "Sign", "Val"), remove=FALSE) %>%
+    dplyr::group_by(Var) %>%
+    dplyr::slice_max(order_by=Ratio, n = 1) %>%
+    dplyr::ungroup() %>%
+    dplyr::arrange(desc(Ratio))
 }
 
 #' @importFrom rlang :=

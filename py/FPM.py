@@ -195,9 +195,3 @@ def ExportRules(rules):
     for rule in rules:
         df_rules.loc[len(df_rules)] = [rule.ParameterName, rule.Sign, rule.Value, rule.Significance, rule.UnselectedSignificance, rule.Ratio]
     return(df_rules)
-
-#sel = pandas.read_csv("../selected.csv")
-#unsel = pandas.read_csv("../unselected.csv")
-
-#rules = FPM(0.5, list(sel.iloc[:,5:14]), sel.iloc[:,5:14].values, unsel.iloc[:,5:14].values, True)
-#print(ExportRules(rules))

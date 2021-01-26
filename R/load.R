@@ -63,6 +63,15 @@ loaddataset <- function(filename, objectives=NULL, inputs=NULL, outputs=NULL, cu
 
   outputs <- opt_parameters[!(opt_parameters %in% inputs)]
 
+  if (!("Iteration" %in% colnames(opt))) {
+    opt <- opt %>% dplyr::mutate(Iteration = seq(1,nrow(.)), .before=names(opt_objectives)[1])
+    #opt_parameters <- c("Iteration", opt_parameters)
+  }
+
+  if(!("Rank" %in% colnames(opt))) {
+    opt <- opt %>% ndsecr(objectives = opt_objectives)
+  }
+
   opt_results <- optresult(data = opt,
                            opt_name = tools::file_path_sans_ext(basename(filename)),
                            opt_id = opt_id,

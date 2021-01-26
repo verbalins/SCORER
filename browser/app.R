@@ -40,6 +40,7 @@
 
 set.seed(42)
 options(shiny.maxRequestSize = 30*1024^2) # 30MB
+options(shiny.reactlog = TRUE)
 reticulate::source_python('../py/FPM.py')
 
 #df <- FSMJ_clusters %>% normalizeValues(attr(., "objectives")) %>% dplyr::select(c(.$inputs,.$objectives,Cluster,Distance,Rank))
@@ -132,10 +133,10 @@ clusterUI <- shiny::fillPage(
                             shiny::actionButton("saveClusters", "Apply clusters"))
     ),
     shiny::fluidRow(
-        shinydashboard::box(title="Visualization",
-                            shiny::plotOutput("clusterViz", width = "100%")),
+        shinydashboard::box(title="Cluster Visualization",
+                            shinycssloaders::withSpinner(shiny::plotOutput("clusterViz", width = "100%"))),
         shinydashboard::box(title="Cluster Performance",
-                            shiny::textOutput("clusterText")
+                            shinycssloaders::withSpinner(shiny::plotOutput("clusterViz2", width = "100%"))
                             )
 
     )
@@ -200,6 +201,12 @@ ruleUI <- shiny::fillPage(
     )
 )
 
+exportUI <- shiny::fillPage(
+    shinydashboard::box(
+        shiny::downloadButton("exportData", "Download Data")
+    )
+)
+
 # FMCUI <- shiny::fillPage(
 #     # Decision trees
 #     # FPM?
@@ -213,11 +220,12 @@ ruleUI <- shiny::fillPage(
 
 sidebar <- shinydashboard::dashboardSidebar(
     shinydashboard::sidebarMenu(id="tabs",
-        shinydashboard::menuItem("Import Data", tabName = "import", icon = shiny::icon("table", lib="font-awesome")),
-        shinydashboard::menuItem("Filter Data", tabName = "filter", icon = shiny::icon("filter", lib="font-awesome")),
-        shinydashboard::menuItem("Clustering", tabName = "cluster", icon = shiny::icon("microscope", lib="font-awesome")),
-        shinydashboard::menuItem("Visualization", tabName = "viz", icon = shiny::icon("chart-bar", lib="font-awesome")),
-        shinydashboard::menuItem("Rule Extraction", tabName = "rule", icon = shiny::icon("sitemap", lib="font-awesome"))
+        shinydashboard::menuItem("Import Data", tabName = "import", icon = shiny::icon("table")),
+        shinydashboard::menuItem("Filter Data", tabName = "filter", icon = shiny::icon("filter")),
+        shinydashboard::menuItem("Clustering", tabName = "cluster", icon = shiny::icon("microscope")),
+        shinydashboard::menuItem("Visualization", tabName = "viz", icon = shiny::icon("chart-bar")),
+        shinydashboard::menuItem("Rule Extraction", tabName = "rule", icon = shiny::icon("sitemap")),
+        shinydashboard::menuItem("Export Data", tabName = "export", icon = shiny::icon("file-export"))
     )
 )
 
@@ -227,7 +235,8 @@ body <- shinydashboard::dashboardBody(
         shinydashboard::tabItem(tabName = "filter", filterUI),
         shinydashboard::tabItem(tabName = "cluster", clusterUI),
         shinydashboard::tabItem(tabName = "viz", visualizationUI),
-        shinydashboard::tabItem(tabName = "rule", ruleUI)
+        shinydashboard::tabItem(tabName = "rule", ruleUI),
+        shinydashboard::tabItem(tabName = "export", exportUI)
     )
 )
 
@@ -239,6 +248,15 @@ dash <- shinydashboard::dashboardPage(
 
 # Define server logic
 server <- function(input, output, session) {
+    ### Navigation logic ----------------------------------------------
+    shiny::observeEvent(input$tabs, {
+        if (input$tabs == "cluster") {
+            if (is.null(input$clusterDep)) {
+                shiny::updateSelectInput(session, "clusterDep", choices=dim_list(), selected=dim_list()$Objectives)
+                shiny::updateSelectInput(session, "clusterInDep", choices=dim_list(), selected=dim_list()$Inputs)
+            }
+        }
+    })
     ### Data upload logic ---------------------------------------------
     uploaded_data <- shiny::reactiveValues('data' = list())
 
@@ -257,9 +275,11 @@ server <- function(input, output, session) {
     output$data_inputs <- shiny::renderUI({
         shiny::selectInput("data_inputs", "Inputs", data_parameters$header, multiple = TRUE)
     })
+
     output$data_outputs <- shiny::renderUI({
         shiny::selectInput("data_outputs", "Outputs", data_parameters$header, multiple = TRUE)
     })
+
     output$data_objectives <- shiny::renderUI({
         shiny::selectInput("data_objectives", "Objectives", data_parameters$header, multiple = TRUE)
     })
@@ -289,7 +309,6 @@ server <- function(input, output, session) {
                                                                                                       uploaded_data$data$objectives))]
                 shiny::updateSelectInput(session,"data_outputs",selected = uploaded_data$data$outputs)
             }
-            #parcoords_headers$headers <- c(current_data()$objectives),attr(current_data(),"inputs"))
             # Reset filters on Visualization tab
             ranges$data <- NULL
             selected_points$data <- NULL
@@ -301,8 +320,6 @@ server <- function(input, output, session) {
         if(is.null(nrow(current_data()))){
             return(NULL)
         }
-        #input$applyfilter
-        #input$importData
         current_data()[input$datatable_rows_all,]
     })
 
@@ -328,11 +345,11 @@ server <- function(input, output, session) {
 
     ### Cluster logic ------------------------------------------
     output$clusterDep <- shiny::renderUI({
-        shiny::selectInput("clusterDep", "Dependent variables:", dim_list(), selected=dim_list()$Objectives, multiple = T)
+        shiny::selectInput("clusterDep", "Dependent variables:", choices = c("",""), multiple = T)
     })
 
     output$clusterInDep <- shiny::renderUI({
-        shiny::selectInput("clusterInDep", "Independent variables:", dim_list(), selected=dim_list()$Inputs, multiple = T)
+        shiny::selectInput("clusterInDep", "Independent variables:", choices = c("",""), multiple = T)
     })
 
     shiny::observeEvent(input$evalClusPerf, {
@@ -358,13 +375,14 @@ server <- function(input, output, session) {
             cluster_data$data <- cluster_data$data %>%
                 dplyr::mutate(dplyr::across(input$clusterDep,collapse::fscale))
         }
+
         if(input$clustTab=="kmeans") {
             kclusts <- tibble::tibble(k = 1:10) %>%
                 dplyr::mutate(
-                    kclust = purrr::map(k, ~kmeans(., .x)),
+                    kclust = purrr::map(k, ~kmeans(cluster_data$data, .x)),
                     tidied = purrr::map(kclust, broom::tidy),
                     glanced = purrr::map(kclust, broom::glance),
-                    augmented = purrr::map(kclust, broom::augment, .)
+                    augmented = purrr::map(kclust, broom::augment, cluster_data$data)
                 )
 
             clusters <- kclusts %>% tidyr::unnest(cols = c(tidied))
@@ -372,14 +390,23 @@ server <- function(input, output, session) {
             clusterings <- kclusts %>% tidyr::unnest(cols = c(glanced))
 
             output$clusterViz <- shiny::renderPlot({
-            ggplot2::ggplot(clusterings, ggplot2::aes(k, tot.withinss)) +
-                ggplot2::geom_line() +
-                ggplot2::geom_point()
+                ggplot2::ggplot(clusterings, ggplot2::aes(k, tot.withinss)) +
+                    ggplot2::geom_line() +
+                    ggplot2::geom_point()
             })
+
+            output$clusterViz2 <- shiny::renderPlot({
+                factoextra::fviz_silhouette()
+            })
+
         } else if(input$clustTab=="clara") {
-            cluster.suggestion <- factoextra::fviz_nbclust(cluster_data$data, FUNcluster = cluster::clara)
+            cluster.suggestion <- factoextra::fviz_nbclust(cluster_data$data, method="silhouette", FUNcluster = cluster::clara)
+
             output$clusterViz <- shiny::renderPlot({
                 cluster.suggestion
+            })
+            output$clusterViz2 <- shiny::renderPlot({
+                factoextra::fviz_cluster(cluster::clara(cluster_data$data, dplyr::arrange(cluster.suggestion$data, desc(y))[1,1], samples = 500, pamLike = TRUE))
             })
         } else if (input$clustTab=="hclust") {
             cluster_data$hclust <- fastcluster::hclust.vector(cluster_data$data)
@@ -391,13 +418,14 @@ server <- function(input, output, session) {
             output$clusterViz <- shiny::renderPlot({
                 rpart.plot::rpart.plot(rprt)
             })
-        } else {
+        } else { # DBSCAN
             res <- dbscan::dbscan(cluster_data$data, eps = input$eps, minPts = input$minpts)
             cluster_data$dbscan <- res$cluster
-            res$cluster
-            output$clusterViz <- shiny::renderPlot({
-                ggplot2::ggplot(as.data.frame(cluster_data$data), ggplot2::aes_string(input$clusterDep[1], input$clusterDep[2], col=res$cluster)) +
-                    ggplot2::geom_point()
+
+            output$clusterViz2 <- shiny::renderPlot({
+                ggplot2::ggplot(as.data.frame(cluster_data$data), ggplot2::aes_string(input$clusterDep[1], input$clusterDep[2])) +
+                    ggplot2::geom_point(ggplot2::aes(color=res$cluster)) +
+                    ggplot2::scale_color_viridis_c()
             })
         }
         # Send output to renderText("clusterText")
@@ -406,11 +434,13 @@ server <- function(input, output, session) {
     shiny::observeEvent(input$saveClusters, {
         # Apply the clustering
         if (input$clustTab=="kmeans") {
-            cluster_data$kmeans <- kmeans(current$data$Objectives, centers=input$numClust)
+            cluster_data$kmeans <- kmeans(cluster_data$data %>% dplyr::select(input$clusterDep), centers=input$numClust)
+            clust <- cluster_data$kmeans$cluster
         } else if(input$clustTab=="clara") {
-            cluster_data$clara <- cluster::clara(cluster_data$data, k=input$numClust, stand=T, samples=500, pamLike = T)
+            cluster_data$clara <- cluster::clara(cluster_data$data, k=input$numClust, stand=T, samples=500, pamLike = TRUE)
             clust <- cluster_data$clara$clustering
         } else if (input$clustTab=="hclust") {
+
         } else if (input$clustTab=="rpart") {
             # Use input$numClust to prune the tree approximately to the number of clusters
 
@@ -418,8 +448,15 @@ server <- function(input, output, session) {
             res <- dbscan::dbscan(cluster_data$data, eps = input$eps, minPts = input$minpts)
             clust <- res$cluster
         }
+        # Save selected values from clusterDep
         uploaded_data$data <- current_data() %>% dplyr::mutate(Cluster = clust)
-        shiny::updateSelectInput(session, "color", choices = c())
+        shiny::updateSelectInput(session, "color", choices = c("Rank", "Cluster"))
+
+        output$clusterViz2 <- shiny::renderPlot({
+            ggplot2::ggplot(as.data.frame(cluster_data$data), ggplot2::aes_string(input$clusterDep[1], input$clusterDep[2])) +
+                ggplot2::geom_point(ggplot2::aes(color=clust)) +
+                ggplot2::scale_color_viridis_c()
+        })
     })
 
     ### Visualization logic
@@ -452,15 +489,8 @@ server <- function(input, output, session) {
         }
     })
 
-    # output$color <- shiny::renderUI({
-    #     shiny::selectInput("color", "Color:", c("Rank","Cluster","Distance"), selectize = FALSE)
-    # })
     # Render the parallel coordinates plot
     output$parcoords <- plotly::renderPlotly({
-        # req(input$x)
-        # req(input$y)
-        # req(input$z)
-        #req(input$color)
         suppressWarnings(
             plotly::plot_ly(type = 'parcoords',
                             dimensions = create_dimensions_list(df_filtered()),
@@ -514,8 +544,6 @@ server <- function(input, output, session) {
                                             args2 = list("visible", c(T,F)),
                                             label = "Toggle filtered"))))
                           )
-            #plotly::hide_colorbar() %>%
-            #plotly::toWebGL()
         )
     })
 
@@ -528,23 +556,16 @@ server <- function(input, output, session) {
     #  var2 = list(c(min1, max1)),
     #  ...
     # )
-    #parcoords_headers <- shiny::reactiveValues('data' = list())
-
     ranges <- shiny::reactiveValues('data' = list())
     shiny::observeEvent(plotly::event_data("plotly_restyle", source = "pcoords"), {
         d <- plotly::event_data("plotly_restyle", source = "pcoords")
-        if (is.null(d[[1]]) || names(d[[1]]) == "line"){
-            # Reordering dimensions
-            return()
-        } else if (names(d[[1]]) == "dimensions") {
-            # changing the ordering of the parallel coordinates plot
-            #parcoords_headers$headers <- d[[1]]$dimensions[[1]]$label # new ordering, save it to ensure proper results
+        if (is.null(d[[1]]) || names(d[[1]]) == "line" || names(d[[1]]) == "dimensions"){
+            # Reordering dimensions or reordering
             return()
         }
         # what is the relevant dimension (i.e. variable)?
         dimension <- as.numeric(stringr::str_extract(names(d[[1]]), "[0-9]+"))
         # careful of the indexing in JS (0) versus R (1)!
-        #dimension_name <- parcoords_headers$headers[[dimension + 1]]
         dimension_name <- unlist(c(dim_list()$Objectives,dim_list()$Inputs))[[dimension + 1]]
         # a given dimension can have multiple selected ranges
         # these will come in as 3D arrays, but a list of vectors
@@ -710,6 +731,15 @@ server <- function(input, output, session) {
                 head(10)
         })
     })
+
+    output$exportData <- shiny::downloadHandler(
+        filename = function() {
+            paste0("OptData-",Sys.Date(), ".csv")
+        },
+        content = function(file) {
+            write.csv2(df_selected()$sel %>% dplyr::select(Iteration) %>% as.data.frame(), file, row.names = FALSE)
+        }
+    )
 }
 
 # Run the application
