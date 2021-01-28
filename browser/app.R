@@ -46,7 +46,7 @@ reticulate::source_python('../py/FPM.py')
 #df <- FSMJ_clusters %>% normalizeValues(attr(., "objectives")) %>% dplyr::select(c(.$inputs,.$objectives,Cluster,Distance,Rank))
 #df <- FSMJ_clusters %>% dplyr::select(Iteration,c(.$inputs,.$objectives,Cluster,Distance,Rank))
 #dimension_names <- names(attr(df, "objectives"))
-cluster_data <- shiny::reactiveValues("data" =list(), "rpart"=list(), "clara"=list(), "kmeans"=list(), "hclust"=list(), "dbscan"=list())
+cluster_data <- shiny::reactiveValues("data" =list(), "rpart"=list(), "clara"=list(), "kmeans"=list(), "hclust"=list(), "density"=list())
 debug <- FALSE
 
 # UI for the import tab
@@ -65,6 +65,7 @@ importUI <- shiny::fluidPage(
         )
     ),
     shiny::fluidRow(shinydashboard::box(title="Select Parameters", #width = NULL,
+                            shiny::helpText("Select the type of parameters for importing."),
                             shiny::uiOutput("data_objectives"),
                             shiny::uiOutput("data_inputs"),
                             shiny::uiOutput("data_outputs"),
@@ -82,6 +83,8 @@ filterUI <- shiny::fluidPage(
     shiny::fluidRow(
         # Data filtering, specific filters for certain values, initial screening
         shinydashboard::box(title="Data summary", width = NULL,
+                            shiny::helpText("Use this table to filter the data you want to analyze. It will persist through the other tabs."),
+                            shiny::helpText("Filter the table and then use the Apply Filter button at the bottom."),
                             shinycssloaders::withSpinner(DT::dataTableOutput("datatable")),
                             shiny::actionButton("applyfilter","Apply Filter")
         )
@@ -141,7 +144,6 @@ clusterUI <- shiny::fillPage(
 
 # UI for the visualization tab
 visualizationUI <- shiny::fillPage(
-    #tags$style(type = "text/css", "#parcoords {height: calc(100vh - 80px) !important;}"),
     shinycssloaders::withSpinner(plotly::plotlyOutput("parcoords")),
     shiny::tabsetPanel(id="chartTab", type = "tabs",
                         shiny::tabPanel("3D",
@@ -158,19 +160,17 @@ visualizationUI <- shiny::fillPage(
                                              shiny::uiOutput("colorslider")))
                         )),
                         tabPanel("2D",
-                                 # lapply(dimension_names[-1], function(nm) plotly::plotlyOutput(nm, width = "33%", inline = TRUE, height = "100%"))
                                  shinycssloaders::withSpinner(uiOutput("plots2d"))
                                 )
                        )
-    #shiny::actionButton("reset", "Reset")
 )
 
 # UI for the rule extraction tab
 ruleUI <- shiny::fillPage(
     # Decision trees
-    # FPM, through python right now
+    # FPM, through python and R
     shiny::fluidRow(
-        shiny::column(4,
+        shiny::column(3,
         shinydashboard::box(width = NULL,
             #shiny::checkboxInput("test", "test"),
             shiny::tabsetPanel(id="ruleTab", type = "tabs",
@@ -192,7 +192,7 @@ ruleUI <- shiny::fillPage(
             )
         )
         ),
-        shiny::column(8,
+        shiny::column(9,
                       shinydashboard::box(width = NULL,
                           tags$style(type = "text/css", "#scatter3d {height: calc(100vh - 80px) !important;}"),
                           shinycssloaders::withSpinner(plotly::plotlyOutput("ruleplot", height = "100%", width = "100%"))
@@ -203,8 +203,10 @@ ruleUI <- shiny::fillPage(
 )
 
 exportUI <- shiny::fillPage(
-    shinydashboard::box(
-        shiny::downloadButton("exportData", "Download Data")
+    shinydashboard::box(title="Download data",
+        shiny::helpText("Specify the data you want to download."),
+        shiny::radioButtons("downloadSelect", label="", choices = c("Imported", "Filtered", "Selected", "Rules")),
+        shiny::downloadButton("exportData", "Download")
     )
 )
 
@@ -300,17 +302,16 @@ server <- function(input, output, session) {
             # Start by getting the column names if available
             #data_parameters()$header <- unlist(strsplit(readLines(new_data$datapath, n=1),";"))
             uploaded_data$data <- NULL
-            df  <- loaddataset(input$fileupload$datapath)
-            if (input$distancemetric) {
-                df <- df %>% addDistances(parallelCores = 10)
-            }
-            uploaded_data$data  <- df
+            uploaded_data$data <- loaddataset(input$fileupload$datapath)
             updateSelectInput(session, "data_objectives", selected = unique(uploaded_data$data$objectives))
         }
     })
 
     shiny::observeEvent(input$importData, {
         if (!is.null(input$fileupload)) {
+            if (input$distancemetric) {
+                uploaded_data$data <- uploaded_data$data %>% addDistances(parallelCores = 10)
+            }
             #dimension_names <- current_data()$objectives
             if(!is.null(input$data_inputs)) {
                 uploaded_data$data$inputs <- input$data_inputs }
@@ -366,6 +367,14 @@ server <- function(input, output, session) {
         shiny::selectInput("clusterInDep", "Independent variables:", choices = c("",""), multiple = T)
     })
 
+    output$clusterViz <- shiny::renderPlot({
+        return()
+    })
+
+    output$clusterViz2 <- shiny::renderPlot({
+        return()
+    })
+
     shiny::observeEvent(input$evalClusPerf, {
         # Ask to scale data
         cluster_data$data <- current_data() %>% dplyr::select(input$clusterDep, input$clusterInDep)
@@ -379,6 +388,11 @@ server <- function(input, output, session) {
                 dbscan::kNNdistplot(cluster_data$data, k=input$minpts)
             })
         }
+    })
+
+    shiny::observeEvent(input$dbmethod, {
+        shinyjs::toggleState("eps", condition = !(input$dbmethod == "HDBSCAN"))
+        shinyjs::toggleState("evalClusPerf", condition = !(input$dbmethod == "HDBSCAN"))
     })
 
     shiny::observeEvent(input$evalClusters, {
@@ -403,8 +417,9 @@ server <- function(input, output, session) {
             })
 
             output$clusterViz2 <- shiny::renderPlot({
-                factoextra::fviz_cluster(clust_method(cluster_data$data, dplyr::arrange(cluster.suggestion$data, desc(y))[1,1]))
+                factoextra::fviz_cluster(clust_method(as.data.frame(cluster_data$data), dplyr::arrange(cluster.suggestion$data, desc(y))[1,1]), data=cluster_data$data)
             })
+            shiny::updateNumericInput(session, "numClust", value = dplyr::arrange(cluster.suggestion$data, desc(y))[1,1])
         } else if (input$clustTab=="rpart") {
             part.data <- cluster_data$data
             form <- as.formula(paste(paste(input$clusterDep, collapse="+"), " ~ ",paste(input$clusterInDep,collapse = "+"),collapse=" "))
@@ -414,8 +429,17 @@ server <- function(input, output, session) {
                 rpart.plot::rpart.plot(rprt)
             })
         } else { # DBSCAN
-            res <- dbscan::dbscan(cluster_data$data, eps = input$eps, minPts = input$minpts)
-            cluster_data$dbscan <- res$cluster
+            db_method <- input$dbmethod
+            if (db_method == "DBSCAN") {
+                res <- dbscan::dbscan(cluster_data$data, eps = input$eps, minPts = input$minpts)
+            } else if (db_method == "OPTICS") {
+                res <- dbscan::optics(cluster_data$data, minPts = input$minpts)
+                res <- dbscan::extractXi(res, xi = input$eps)
+            } else {
+                res <- dbscan::hdbscan(cluster_data$data, minPts = input$minpts)
+            }
+
+            cluster_data$density <- res$cluster
 
             output$clusterViz2 <- shiny::renderPlot({
                 ggplot2::ggplot(as.data.frame(cluster_data$data), ggplot2::aes_string(input$clusterDep[1], input$clusterDep[2])) +
@@ -428,24 +452,25 @@ server <- function(input, output, session) {
 
     shiny::observeEvent(input$saveClusters, {
         # Apply the clustering
-        if (input$clustTab=="kmeans") {
-            cluster_data$kmeans <- kmeans(cluster_data$data %>% dplyr::select(input$clusterDep), centers=input$numClust)
-            clust <- cluster_data$kmeans$cluster
-        } else if(input$clustTab=="clara") {
-            cluster_data$clara <- cluster::clara(cluster_data$data, k=input$numClust, stand=TRUE, samples=500, pamLike = TRUE)
-            clust <- cluster_data$clara$clustering
-        } else if (input$clustTab=="hclust") {
+        if (input$clustTab=="Partitioning") {
+            if (input$hmethod=="kmeans"){
+                cluster_data$kmeans <- kmeans(cluster_data$data %>% dplyr::select(input$clusterDep), centers=input$numClust)
+                clust <- cluster_data$kmeans$cluster
+            } else if (input$hmethod=="clara"){
+                cluster_data$clara <- cluster::clara(cluster_data$data, k=input$numClust, stand=TRUE, samples=500, pamLike = TRUE)
+                clust <- cluster_data$clara$clustering
+            } else { #hclust
 
+            }
         } else if (input$clustTab=="rpart") {
             # Use input$numClust to prune the tree approximately to the number of clusters
 
         } else { #dbscan
-            res <- dbscan::dbscan(cluster_data$data, eps = input$eps, minPts = input$minpts)
-            clust <- res$cluster
+            clust <- cluster_data$density
         }
         # Save selected values from clusterDep
         uploaded_data$data <- current_data() %>% dplyr::mutate(Cluster = clust)
-        shiny::updateSelectInput(session, "color", choices = c("Rank", "Cluster"))
+        shiny::updateSelectInput(session, "color", choices = c(grep("Rank|Distance",colnames(current_data()),value = TRUE), "Cluster"))
 
         output$clusterViz2 <- shiny::renderPlot({
             ggplot2::ggplot(as.data.frame(cluster_data$data), ggplot2::aes_string(input$clusterDep[1], input$clusterDep[2])) +
@@ -458,7 +483,8 @@ server <- function(input, output, session) {
     dim_list <- shiny::reactive({
         list(Objectives=unique(current_data()$objectives),
              Inputs=unique(current_data()$inputs),
-             Outputs=unique(current_data()$outputs))
+             Outputs=unique(current_data()$outputs),
+             Filter=unique(grep("Rank|Distance|Cluster",colnames(current_data()),value = TRUE)))
     })
 
     output$x <- shiny::renderUI({
@@ -474,7 +500,7 @@ server <- function(input, output, session) {
     })
 
     output$color <- shiny::renderUI({
-        choice <- grep("Rank|Distance|Cluster",colnames(FMC),value = TRUE)
+        choice <- grep("Rank|Distance|Cluster",colnames(current_data()),value = TRUE)
         shiny::selectInput("color", "Color:", choice, selectize = FALSE)
     })
 
@@ -484,9 +510,10 @@ server <- function(input, output, session) {
         max_val <- 0
 
         if(input$color %in% colnames(df_filtered())) {
-            min_val <- min(df_filtered()[[input$color]])
-            max_val <- max(df_filtered()[[input$color]])
-            shiny::sliderInput("colorslider", "Filter Color:", min_val, max_val, value=c(min_val, max_val), round=-2)
+            min_val <- floor(min(df_filtered()[[input$color]]))
+            max_val <- round(max(df_filtered()[[input$color]]),2)
+            stepsize <- switch(input$color, "Rank" = 1, "Distance" = NULL, "Cluster" = 1)
+            shiny::sliderInput("colorslider", "Filter Color:", min_val, max_val, value=c(min_val, max_val), round=-2, step = stepsize)
         }
     })
 
@@ -496,7 +523,7 @@ server <- function(input, output, session) {
         suppressWarnings(
             plotly::plot_ly(type = 'parcoords',
                             dimensions = create_dimensions_list(df_filtered()),
-                            line=list(color = stats::formula(paste0("~",input$color))),
+                            line=list(color = stats::formula(paste0("~",shiny::isolate(input$color)))),
                             source = "pcoords",
                             data = df_filtered()) %>%
             plotly::event_register(event="plotly_restyle") %>%
@@ -504,17 +531,37 @@ server <- function(input, output, session) {
         )
     })
 
-    # React to changes to the colouring variable
-    shiny::observeEvent(input$color, {
-        if(input$color %in% colnames(df_filtered())) {
-            plotly::plotlyProxy("scatter3d", session, deferUntilFlush = F) %>%
-                plotly::plotlyProxyInvoke("restyle", list(color = stats::formula(paste0("~",input$color))), 0)
-        }
-    })
+    #React to changes to the colouring variable
+    # shiny::observeEvent(input$color, {
+    #     if(input$color %in% colnames(df_filtered())) {
+    #         isolate({
+    #         form <- stats::formula(paste0("~",input$color))
+    #         p <- plotly::plotlyProxy("scatter3d", session)
+    #         test <- df_selected()$sel[,input$color]
+    #         if (!is.null(cam_3d$scene)) {
+    #             #p %>% plotly::plotlyProxyInvoke("relayout", list(scene = list(camera = cam_3d$scene)))
+    #             p %>% plotly::plotlyProxyInvoke("relayout",list(scene.camera = cam_3d$scene)) %>%
+    #                 plotly::plotlyProxyInvoke("relayout", list(color = test[[1]]))
+    #         }
+    #         #p %>% plotly::plotlyProxyInvoke("restyle", list(color = form))
+    #
+    #         })
+    #     }
+    # })
+
+    # cam_3d <- shiny::reactiveValues(scene=NULL)
+
+    # shiny::observeEvent(plotly::event_data("plotly_relayout", source = "s3d"), {
+    #     scene <- plotly::event_data("plotly_relayout", source = "s3d")
+    #     cam_3d$scene <- list(up=scene$scene.camera$up,
+    #                               center=scene$scene.camera$center,
+    #                               eye=scene$scene.camera$eye,
+    #                               projection=scene$scene.camera$projection)
+    # })
 
     # Render the scatter3d plot
     output$scatter3d <- plotly::renderPlotly({
-        req(input$color, input$x, input$y, input$z)
+        req(input$x, input$y, input$z)
         suppressWarnings(
             plotly::plot_ly(type="scatter3d",
                             x = stats::formula(paste0("~",input$x)),
@@ -530,13 +577,14 @@ server <- function(input, output, session) {
                             size = I(30),
                             opacity=1,
                             height=600,
-                            data = df_selected()$sel) %>%
-                plotly::add_trace(
-                    color = I("gray"),
-                    size = I(10),
-                    opacity = 0.2,
-                    data = df_selected()$unsel,
-                    showlegend=F) %>%
+                            data = df_selected()$sel,
+                            source ="s3d") %>%
+            plotly::add_trace(
+                color = I("gray"),
+                size = I(10),
+                opacity = 0.2,
+                data = df_selected()$unsel,
+                showlegend=F) %>%
             plotly::layout(updatemenus = list(
                                list(
                                    type = "buttons",
@@ -546,7 +594,7 @@ server <- function(input, output, session) {
                                             args = list("visible", c(T,T)),
                                             args2 = list("visible", c(T,F)),
                                             label = "Toggle filtered"))))
-                          )
+            )
         )
     })
 
@@ -607,12 +655,13 @@ server <- function(input, output, session) {
         for (i in names(selected_points$data)) {
             parcoords_sel <- parcoords_sel %>% dplyr::filter(Iteration %in% unlist(selected_points$data[i]))
         }
-
-        if(!is.null(input$colorslider) && input$color %in% colnames(df_filtered())) {
-            df_filterdata$sel <- parcoords_sel %>% dplyr::filter(dplyr::between(.[[input$color]], input$colorslider[1], input$colorslider[2]))
-        } else {
-            df_filterdata$sel <- parcoords_sel
-        }
+        isolate({
+            if(!is.null(input$colorslider) && input$color %in% colnames(df_filtered())) {
+                df_filterdata$sel <- parcoords_sel %>% dplyr::filter(dplyr::between(.[[input$color]], input$colorslider[1], input$colorslider[2]))
+            } else {
+                df_filterdata$sel <- parcoords_sel
+            }
+        })
         df_filterdata$unsel <- dplyr::anti_join(df_filtered(), df_filterdata$sel, by="Iteration")
         df_filterdata
     })
@@ -621,7 +670,7 @@ server <- function(input, output, session) {
     # Each reactive value corresponds to a different variable
     selected_points <- shiny::reactiveValues('data' = list())
 
-    output$plots2d <- renderUI({
+    output$plots2d <- shiny::renderUI({
         plot_output_list <- lapply(1:length(dim_list()$Objectives), function(i) {
             plotname <- paste0("plot", i)
             plotly::plotlyOutput(plotname, width = "33%", inline = TRUE, height = "100%")
@@ -634,7 +683,7 @@ server <- function(input, output, session) {
 
     # Call renderPlot for each one. Plots are only actually generated when they
     # are visible on the web page.
-    observeEvent({{c(input$importData,input$applyfilter)}}, {
+    shiny::observeEvent({{c(input$importData,input$applyfilter)}}, {
         max_plots <- length(dim_list()$Objectives)
         for (i in 1:max_plots-1) {
         # Need local so that each item gets its own number. Without it, the value
@@ -705,6 +754,8 @@ server <- function(input, output, session) {
     })
 
     ### Rule logic --------------------------
+    output$ruletable <- DT::renderDT(data.frame())
+    output$pyruletable <- DT::renderDT(datam.frame())
     shiny::observeEvent(input$rulebutton, {
         sel <- df_selected()$sel %>% dplyr::select(.$inputs) %>% as.data.frame()
         unsel <- df_selected()$unsel %>% dplyr::select(.$inputs) %>% as.data.frame()
@@ -787,10 +838,16 @@ server <- function(input, output, session) {
 
     output$exportData <- shiny::downloadHandler(
         filename = function() {
-            paste0("OptData-",Sys.Date(), ".csv")
+            opt_name <- df_filtered()$opt_name
+            paste0(opt_name,input$downloadSelect,".csv")
         },
         content = function(file) {
-            write.csv2(df_selected()$sel %>% dplyr::select(Iteration) %>% as.data.frame(), file, row.names = FALSE)
+            data <- switch(input$downloadSelect,
+                           "Imported" = uploaded_data$data,
+                           "Filtered" = df_filtered(),
+                           "Selected" = df_selected()$sel,
+                           "Rules" = rules$R)
+            write.csv2(as.data.frame(data), file, row.names = FALSE)
         }
     )
 }
