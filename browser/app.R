@@ -37,8 +37,8 @@
 #   Dataset with clusters applied.
 #       TODO: Set on this screen or another?
 #
-
-set.seed(42)
+seed <- 42
+set.seed(seed)
 options(shiny.maxRequestSize = 30*1024^2) # 30MB
 options(shiny.reactlog = TRUE)
 reticulate::source_python('../py/FPM.py')
@@ -65,7 +65,7 @@ importUI <- shiny::fluidPage(
         )
     ),
     shiny::fluidRow(shinydashboard::box(title="Select Parameters", #width = NULL,
-                            shiny::helpText("Select the type of parameters for importing."),
+                            shiny::helpText("Select the type of parameters for importing. Parameters not selected in either category will be excluded."),
                             shiny::uiOutput("data_objectives"),
                             shiny::uiOutput("data_inputs"),
                             shiny::uiOutput("data_outputs"),
@@ -86,7 +86,12 @@ filterUI <- shiny::fluidPage(
                             shiny::helpText("Use this table to filter the data you want to analyze. It will persist through the other tabs."),
                             shiny::helpText("Filter the table and then use the Apply Filter button at the bottom."),
                             shinycssloaders::withSpinner(DT::dataTableOutput("datatable")),
-                            shiny::actionButton("applyfilter","Apply Filter")
+                            shiny::actionButton("applyfilter","Apply Filter",
+                                                icon = shiny::icon("check-circle"),
+                                                class = "btn-success"),
+                            shiny::actionButton("resetfilter","Reset Filter",
+                                                icon = shiny::icon("ban"),
+                                                class = "btn-danger")
         )
     )
 )
@@ -119,6 +124,7 @@ clusterUI <- shiny::fillPage(
                              #                   c("rpart", "kmeans", "clara", "hclust", "dbscan")),
                                 shiny::tabsetPanel(id="clustTab",type="tabs",
                                 shiny::tabPanel("rpart",
+                                        shiny::numericInput("cp", "cp:", 0.01, 0.01, 1, 0.01)
                                                 ),
                                 shiny::tabPanel("Partitioning",
                                                 shiny::radioButtons("hmethod", "Method:", choices=c("kmeans","clara","hclust"), inline=TRUE),
@@ -204,10 +210,12 @@ ruleUI <- shiny::fillPage(
 
 exportUI <- shiny::fillPage(
     shinydashboard::box(title="Download data",
-        shiny::helpText("Specify the data you want to download."),
+        shiny::helpText("Specify the data to download."),
         shiny::radioButtons("downloadSelect", label="", choices = c("Imported", "Filtered", "Selected", "Rules")),
         shiny::downloadButton("exportData", "Download")
-    )
+    ),
+    shinydashboard::box(title="Generated Code",
+                        shiny::htmlOutput("generateRcode"))
 )
 
 # FMCUI <- shiny::fillPage(
@@ -302,17 +310,22 @@ server <- function(input, output, session) {
             # Start by getting the column names if available
             #data_parameters()$header <- unlist(strsplit(readLines(new_data$datapath, n=1),";"))
             uploaded_data$data <- NULL
+
             uploaded_data$data <- loaddataset(input$fileupload$datapath)
+            uploaded_data$data$opt_name <- tools::file_path_sans_ext(input$fileupload$name)
             updateSelectInput(session, "data_objectives", selected = unique(uploaded_data$data$objectives))
         }
     })
 
     shiny::observeEvent(input$importData, {
         if (!is.null(input$fileupload)) {
+            sel <- c(input$data_inputs, input$data_objectives, input$data_outputs)
+            uploaded_data$data <- uploaded_data$data %>% dplyr::select("Iteration", dplyr::all_of(sel), "Rank")
+
             if (input$distancemetric) {
                 uploaded_data$data <- uploaded_data$data %>% addDistances(parallelCores = 10)
             }
-            #dimension_names <- current_data()$objectives
+
             if(!is.null(input$data_inputs)) {
                 uploaded_data$data$inputs <- input$data_inputs }
             if(!is.null(input$data_objectives)) {
@@ -423,7 +436,7 @@ server <- function(input, output, session) {
         } else if (input$clustTab=="rpart") {
             part.data <- cluster_data$data
             form <- as.formula(paste(paste(input$clusterDep, collapse="+"), " ~ ",paste(input$clusterInDep,collapse = "+"),collapse=" "))
-            rprt <- rpart::rpart(form, data=part.data, model=T)
+            rprt <- rpart::rpart(form, data=part.data, model=TRUE, control=rpart::rpart.control(cp = input$cp))
             cluster_data$rpart <- rprt
             output$clusterViz <- shiny::renderPlot({
                 rpart.plot::rpart.plot(rprt)
@@ -839,7 +852,7 @@ server <- function(input, output, session) {
     output$exportData <- shiny::downloadHandler(
         filename = function() {
             opt_name <- df_filtered()$opt_name
-            paste0(opt_name,input$downloadSelect,".csv")
+            paste0(opt_name,"-",input$downloadSelect,".csv")
         },
         content = function(file) {
             data <- switch(input$downloadSelect,
@@ -850,6 +863,35 @@ server <- function(input, output, session) {
             write.csv2(as.data.frame(data), file, row.names = FALSE)
         }
     )
+
+    output$generateRcode <- shiny::renderText({
+
+        pastevector  <- function(x, y) { paste0(x, "=c(", paste0("\"", y, "\"", collapse=", "),")") }
+        createfilter <- function(x, y) { paste0("dplyr::between(", paste(x, y[1], y[2], sep=","), ")") }
+        load_data <- paste0("df <- SCORER::loaddataset(file=", ",<br>",
+               pastevector("objectives",uploaded_data$data$objectives), ",<br>",
+               pastevector("inputs",uploaded_data$data$inputs), ",<br>",
+               pastevector("outputs",uploaded_data$data$outputs),")<br>")
+
+        select_data <- paste0("df_imported <- df %>% dplyr::select(",paste("Iteration",
+                                      paste(uploaded_data$data$objectives, collapse=","),
+                                      paste(uploaded_data$data$inputs, collapse=","),
+                                      paste(uploaded_data$data$outputs, collapse=","),
+                                      "dplyr::starts_with(c('Rank','Distance'))", collapse=",", sep=","),")<br>")
+
+        filters <- unlist(input$datatable_search_columns)
+        filter_data <- paste0("df_filtered <- df_imported %>% dplyr::filter(",
+                              ")<br>")
+
+        paste0("set.seed(",seed,")<br> <br>",
+              load_data, "<br> ",
+              select_data, "<br> ",
+              filter_data, "<br> ",
+              paste0("cluster"), "<br> ",
+              paste0("rules <- SCORER::fpm(maxLevel=", input$maxlevel,
+                     ",minSig=",input$minsig,
+                     ",selectedData=)"), "<br> ")
+    })
 }
 
 # Run the application
