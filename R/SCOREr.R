@@ -35,7 +35,7 @@ new_optresult <- function(data, opt_name, opt_id, objectives, inputs, outputs, p
     }
     return(x)
   } else {
-    NextMethod(x, name, value)
+    return(NextMethod(x, name, value))
   }
 }
 

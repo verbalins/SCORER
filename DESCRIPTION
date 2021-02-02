@@ -21,20 +21,19 @@ Depends: R (>= 2.10)
 Imports:
     readr,
     tidyr,
-    ggplot2,
     dplyr,
+    tibble,
+    ggplot2,
     BBmisc,
     ecr,
     plotly,
     stringr,
     ggtext,
     tikzDevice,
-    stats,
-    tibble,
     scales,
-    NbClust,
     shiny,
-    shinydashboard
+    shinydashboard,
+    fastcluster
 RoxygenNote: 7.1.1
 Roxygen: list(markdown = TRUE)
 Suggests: 
