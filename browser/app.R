@@ -40,13 +40,10 @@
 seed <- 42
 set.seed(seed)
 options(shiny.maxRequestSize = 30*1024^2) # 30MB
-options(shiny.reactlog = TRUE)
+#options(shiny.reactlog = TRUE)
 reticulate::source_python('../py/FPM.py')
 
-#df <- FSMJ_clusters %>% normalizeValues(attr(., "objectives")) %>% dplyr::select(c(.$inputs,.$objectives,Cluster,Distance,Rank))
-#df <- FSMJ_clusters %>% dplyr::select(Iteration,c(.$inputs,.$objectives,Cluster,Distance,Rank))
-#dimension_names <- names(attr(df, "objectives"))
-cluster_data <- shiny::reactiveValues("data" =list(), "rpart"=list(), "clara"=list(), "kmeans"=list(), "hclust"=list(), "density"=list())
+cluster_data <- shiny::reactiveValues("data" =list(), "rpart"=list(), "clara"=list(), "kmeans"=list(), "hclust"=list(), "density"=list(), "saved"="")
 debug <- FALSE
 
 # UI for the import tab
@@ -57,6 +54,7 @@ importUI <- shiny::fluidPage(
     shiny::fluidRow(
         # Data selection and import
         shinydashboard::box(title="Upload data", #width = NULL,
+                            shiny::helpText("Select a file exported from OptimizeBrowser, or which contains similar headers."),
             shiny::fileInput("fileupload", "Choose CSV File",
                       multiple = FALSE,
                       accept = c("text/csv",
@@ -123,18 +121,22 @@ clusterUI <- shiny::fillPage(
         shinydashboard::box(#shiny::radioButtons("clustermethod", "Cluster method:",
                              #                   c("rpart", "kmeans", "clara", "hclust", "dbscan")),
                                 shiny::tabsetPanel(id="clustTab",type="tabs",
-                                shiny::tabPanel("rpart",
-                                        shiny::numericInput("cp", "cp:", 0.01, 0.01, 1, 0.01)
+                                shiny::tabPanel("Hierarchical",
+                                                shiny::radioButtons("hmethod", "Method:", choices=c("hclust","agnes","diana"), inline=TRUE),
+                                                shiny::numericInput("numClustHC", "Number of clusters:", 5, min=1, step=1)
                                                 ),
                                 shiny::tabPanel("Partitioning",
-                                                shiny::radioButtons("hmethod", "Method:", choices=c("kmeans","clara","hclust"), inline=TRUE),
+                                                shiny::radioButtons("clustmethod", "Method:", choices=c("kmeans","pam","clara","fanny"), inline=TRUE),
                                                 shiny::numericInput("numClust", "Number of clusters:", 5, min=1, step=1)
-                                                ),
-                                shiny::tabPanel("dbscan",
+                                ),
+                                shiny::tabPanel("Density",
                                     shiny::radioButtons("dbmethod", "Method:", choices=c("DBSCAN","OPTICS","HDBSCAN"), inline=TRUE),
                                     shiny::numericInput("minpts", "MinPts:", 5, min=1, step=1),
                                     shiny::numericInput("eps", "eps:", 0.1, min=0, step=0.01),
-                                    shiny::actionButton("evalClusPerf", "Evaluate eps"))),
+                                    shiny::actionButton("evalClusPerf", "Evaluate eps")),
+                                shiny::tabPanel("Decision Trees",
+                                                shiny::numericInput("cp", "cp:", 0.01, 0.01, 1, 0.01)
+                                )),
                             shiny::actionButton("evalClusters", "Evaluate clusters"),
                             shiny::actionButton("saveClusters", "Apply clusters"))
     ),
@@ -186,7 +188,8 @@ ruleUI <- shiny::fillPage(
                                                shiny::numericInput("fpmlevel", "Rule levels", 1, 1, 4, 1)),
                                shiny::tabPanel("Hierarchical")
             ),
-            shiny::actionButton("rulebutton", "Create Rules")
+            shiny::actionButton("rulebutton", "Create Rules"),
+            shiny::textOutput("ruleError", inline = TRUE)
         ),
         shinydashboard::box(width = NULL,
             shiny::tabsetPanel(type="tabs",
@@ -211,24 +214,14 @@ ruleUI <- shiny::fillPage(
 exportUI <- shiny::fillPage(
     shinydashboard::box(title="Download data",
         shiny::helpText("Specify the data to download."),
-        shiny::radioButtons("downloadSelect", label="", choices = c("Imported", "Filtered", "Selected", "Rules")),
+        shiny::radioButtons("downloadSelect", label="", choices = c("Imported", "Filtered", "Selected", "Rules", "Code")),
         shiny::downloadButton("exportData", "Download")
     ),
     shinydashboard::box(title="Generated Code",
                         shiny::htmlOutput("generateRcode"))
 )
 
-# FMCUI <- shiny::fillPage(
-#     # Decision trees
-#     # FPM?
-#     shiny::fluidRow(
-#         shiny::column(8,
-#                       plotly::plotlyOutput("FMC", height = "100%", width = "100%")),
-#         shiny::column(4,
-#                       shiny::dataTableOutput("FMC_table"))
-#     )
-# )
-
+# Sidebar UI
 sidebar <- shinydashboard::dashboardSidebar(
     shinydashboard::sidebarMenu(id="tabs",
         shinydashboard::menuItem("Import Data", tabName = "import", icon = shiny::icon("table")),
@@ -240,6 +233,7 @@ sidebar <- shinydashboard::dashboardSidebar(
     )
 )
 
+# Body UI
 body <- shinydashboard::dashboardBody(
     shinydashboard::tabItems(
         shinydashboard::tabItem(tabName = "import", importUI),
@@ -264,22 +258,25 @@ server <- function(input, output, session) {
         if (input$tabs == "cluster") {
             if (is.null(input$clusterDep)) {
                 shiny::updateSelectInput(session, "clusterDep", choices=dim_list(), selected=dim_list()$Objectives)
-                shiny::updateSelectInput(session, "clusterInDep", choices=dim_list(), selected=dim_list()$Inputs)
+                shiny::updateSelectInput(session, "clusterInDep", choices=dim_list())#, selected=dim_list()$Inputs)
             }
+        } else if (input$tabs =="rule") {
+            output$ruleError <- shiny::renderText({
+                shiny::validate(
+                    shiny::need(nrow(df_selected()$unsel) != 0, "Please select data first")
+                )
+            })
         }
     })
     ### Data upload logic ---------------------------------------------
-    uploaded_data <- shiny::reactiveValues('data' = FMC)
+    uploaded_data <- shiny::reactiveValues(data=NULL)#('data' = FMC)
 
     current_data <- reactive({
-        # if (debug){
-        #     uploaded_data$data <- FMC
-        # }
         uploaded_data$data
     })
 
     data_parameters <- shiny::reactive({
-        if (nrow(current_data())==0){
+        if (nrow(current_data())==0 || is.null(current_data())){
             return(list(header = "",
                  inputs = "",
                  outputs = "",
@@ -308,7 +305,6 @@ server <- function(input, output, session) {
         new_data <- input$fileupload
         if (!is.null(new_data)) {
             # Start by getting the column names if available
-            #data_parameters()$header <- unlist(strsplit(readLines(new_data$datapath, n=1),";"))
             uploaded_data$data <- NULL
 
             uploaded_data$data <- loaddataset(input$fileupload$datapath)
@@ -417,25 +413,38 @@ server <- function(input, output, session) {
                 dplyr::mutate(dplyr::across(input$clusterDep,collapse::fscale))
         }
 
-        if (input$clustTab=="Partitioning") {
-            clust_method <- switch (input$hmethod,
-                "kmeans" = kmeans,
-                "clara" = cluster::clara,
-                "hclust" = factoextra::hcut
-            )
+        if (input$clustTab=="Partitioning" || input$clustTab == "Hierarchical") {
+            if (input$clustTab == "Hierarchical") {
+                clust_method <- switch (input$clustmethod,
+                                        "kmeans" = kmeans,
+                                        "clara" = cluster::clara,
+                )
+            } else {
+                clust_method <- switch (input$hmethod,
+                                        "hclust" = factoextra::hcut,
+                                        "agnes" = cluster::agnes,
+                                        "diana" = cluster::diana)
+            }
 
-            cluster.suggestion <- factoextra::fviz_nbclust(cluster_data$data, method="silhouette", FUNcluster = clust_method)
+            #dissim <- cluster::daisy(cluster_data$data, metric = "gower", stand = TRUE, warnType = FALSE)
+
+            #cluster.suggestion <- factoextra::fviz_nbclust(cluster_data$data, diss=dissim, method="silhouette", FUNcluster = clust_method)
+            cluster.suggestion <- factoextra::fviz_nbclust(as.data.frame(cluster_data$data), FUNcluster = clust_method, method="silhouette")
             output$clusterViz <- shiny::renderPlot({
                 cluster.suggestion
             })
+            k_val <- as.numeric(dplyr::arrange(cluster.suggestion$data, desc(y))[1,1])
 
             output$clusterViz2 <- shiny::renderPlot({
-                factoextra::fviz_cluster(clust_method(as.data.frame(cluster_data$data), dplyr::arrange(cluster.suggestion$data, desc(y))[1,1]), data=cluster_data$data)
+                factoextra::fviz_cluster(clust_method(as.data.frame(cluster_data$data), k_val), data=cluster_data$data)
             })
-            shiny::updateNumericInput(session, "numClust", value = dplyr::arrange(cluster.suggestion$data, desc(y))[1,1])
-        } else if (input$clustTab=="rpart") {
+
+            shiny::updateNumericInput(session, "numClustHC", value = k_val)
+            shiny::updateNumericInput(session, "numClust", value = k_val)
+        } else if (input$clustTab=="Decision Trees") {
             part.data <- cluster_data$data
-            form <- as.formula(paste(paste(input$clusterDep, collapse="+"), " ~ ",paste(input$clusterInDep,collapse = "+"),collapse=" "))
+            dep <- dplyr::if_else(is.null(input$clusterInDep), cluster_data$data$inputs, input$clusterInDep)
+            form <- as.formula(paste(paste(input$clusterDep, collapse="+"), " ~ ",paste(dep,collapse = "+"),collapse=" "))
             rprt <- rpart::rpart(form, data=part.data, model=TRUE, control=rpart::rpart.control(cp = input$cp))
             cluster_data$rpart <- rprt
             output$clusterViz <- shiny::renderPlot({
@@ -449,7 +458,8 @@ server <- function(input, output, session) {
                 res <- dbscan::optics(cluster_data$data, minPts = input$minpts)
                 res <- dbscan::extractXi(res, xi = input$eps)
             } else {
-                res <- dbscan::hdbscan(cluster_data$data, minPts = input$minpts)
+                diss <- cluster::daisy(cluster_data$data, metric = "gower")
+                res <- dbscan::hdbscan(cluster_data$data, xdist=diss, minPts = input$minpts)
             }
 
             cluster_data$density <- res$cluster
@@ -465,17 +475,31 @@ server <- function(input, output, session) {
 
     shiny::observeEvent(input$saveClusters, {
         # Apply the clustering
-        if (input$clustTab=="Partitioning") {
-            if (input$hmethod=="kmeans"){
-                cluster_data$kmeans <- kmeans(cluster_data$data %>% dplyr::select(input$clusterDep), centers=input$numClust)
-                clust <- cluster_data$kmeans$cluster
-            } else if (input$hmethod=="clara"){
-                cluster_data$clara <- cluster::clara(cluster_data$data, k=input$numClust, stand=TRUE, samples=500, pamLike = TRUE)
-                clust <- cluster_data$clara$clustering
-            } else { #hclust
+        #c("hclust","agnes","diana")
+        #c("kmeans","pam","clara","fanny")
+        if (input$clustTab=="Hierarchical") {
+            if (input$hmethod=="hclust") {
+                h.res <- fastcluster::hclust.vector(as.data.frame(cluster_data$data), method = "ward")
+                res <- cutree(h.res, k=input$numClustHC)
+                clust <- res
+            } else if (input$hmethod=="agnes") {
+                res  <- cluster::agnes(cluster::daisy(as.data.frame(cluster_data$data),metric = "gower"), stand=TRUE, method="ward", keep.diss=FALSE, keep.data=FALSE)
+            } else if (input$hmethod=="diana") {
 
             }
-        } else if (input$clustTab=="rpart") {
+        } else if (input$clustTab == "Partitioning") {
+            if (input$clustmethod=="kmeans") {
+                cluster_data$kmeans <- kmeans(cluster_data$data %>% dplyr::select(input$clusterDep), centers=input$numClust)
+                clust <- cluster_data$kmeans$cluster
+            } else if (input$clustmethod=="pam"){
+                clust <- cluster::pam(cluster_data$data, k=input$numClust, pamonce=5, cluster.only = TRUE)
+            } else if (input$clustmethod=="clara"){
+                cluster_data$clara <- cluster::clara(cluster_data$data, k=input$numClust, samples=500, pamLike = TRUE, medoids.x = FALSE, keep.data = FALSE)
+                clust <- cluster_data$clara$clustering
+            } else if (input$clustmethod=="fanny"){
+                clust <- cluster::fanny(cluster_data$data, k=input$numClust, cluster.only = TRUE, keep.diss = FALSE, keep.data = FALSE)
+            }
+        } else if (input$clustTab=="Decision Trees") {
             # Use input$numClust to prune the tree approximately to the number of clusters
 
         } else { #dbscan
@@ -484,6 +508,8 @@ server <- function(input, output, session) {
         # Save selected values from clusterDep
         uploaded_data$data <- current_data() %>% dplyr::mutate(Cluster = clust)
         shiny::updateSelectInput(session, "color", choices = c(grep("Rank|Distance",colnames(current_data()),value = TRUE), "Cluster"))
+
+        cluster_data$saved <- input$clustTab
 
         output$clusterViz2 <- shiny::renderPlot({
             ggplot2::ggplot(as.data.frame(cluster_data$data), ggplot2::aes_string(input$clusterDep[1], input$clusterDep[2])) +
@@ -768,8 +794,11 @@ server <- function(input, output, session) {
 
     ### Rule logic --------------------------
     output$ruletable <- DT::renderDT(data.frame())
-    output$pyruletable <- DT::renderDT(datam.frame())
+    output$pyruletable <- DT::renderDT(data.frame())
     shiny::observeEvent(input$rulebutton, {
+        if (nrow(df_selected()$unsel) == 0) {
+           return() # Can't go forward without selecting from the Visualization tab
+        }
         sel <- df_selected()$sel %>% dplyr::select(.$inputs) %>% as.data.frame()
         unsel <- df_selected()$unsel %>% dplyr::select(.$inputs) %>% as.data.frame()
 
@@ -852,45 +881,88 @@ server <- function(input, output, session) {
     output$exportData <- shiny::downloadHandler(
         filename = function() {
             opt_name <- df_filtered()$opt_name
-            paste0(opt_name,"-",input$downloadSelect,".csv")
+            if (input$downloadSelect =="Code") {
+                paste0(opt_name,"-",input$downloadSelect,".R")
+            } else {
+                paste0(opt_name,"-",input$downloadSelect,".csv")
+            }
+
         },
         content = function(file) {
-            data <- switch(input$downloadSelect,
-                           "Imported" = uploaded_data$data,
-                           "Filtered" = df_filtered(),
-                           "Selected" = df_selected()$sel,
-                           "Rules" = rules$R)
-            write.csv2(as.data.frame(data), file, row.names = FALSE)
+            if (input$downloadSelect =="Code") {
+                getCode() %>%
+                    stringr::str_replace_all(pattern = "<br>", replacement = "\n") %>%
+                    readr::write_lines(file = file)
+            } else {
+                data <- switch(input$downloadSelect,
+                               "Imported" = uploaded_data$data,
+                               "Filtered" = df_filtered(),
+                               "Selected" = df_selected()$sel,
+                               "Rules" = rules$R)
+                write.csv2(as.data.frame(data), file, row.names = FALSE)
+            }
         }
     )
-
-    output$generateRcode <- shiny::renderText({
-
+    # Get code for the
+    getCode <- shiny::reactive({
         pastevector  <- function(x, y) { paste0(x, "=c(", paste0("\"", y, "\"", collapse=", "),")") }
-        createfilter <- function(x, y) { paste0("dplyr::between(", paste(x, y[1], y[2], sep=","), ")") }
-        load_data <- paste0("df <- SCORER::loaddataset(file=", ",<br>",
-               pastevector("objectives",uploaded_data$data$objectives), ",<br>",
-               pastevector("inputs",uploaded_data$data$inputs), ",<br>",
-               pastevector("outputs",uploaded_data$data$outputs),")<br>")
+        createfilter <- function(x, y) {
+            val <- unlist(stringr::str_split(x, " ... "))
+            paste0("dplyr::between(", paste(y, val[1], val[2], sep=","), ")")
+        }
 
-        select_data <- paste0("df_imported <- df %>% dplyr::select(",paste("Iteration",
-                                      paste(uploaded_data$data$objectives, collapse=","),
-                                      paste(uploaded_data$data$inputs, collapse=","),
-                                      paste(uploaded_data$data$outputs, collapse=","),
-                                      "dplyr::starts_with(c('Rank','Distance'))", collapse=",", sep=","),")<br>")
+        load_data <- paste0("df <- SCORER::loaddataset(file=\"", input$fileupload$name, "\",<br>",
+                            pastevector("objectives",uploaded_data$data$objectives), ",<br>",
+                            pastevector("inputs",uploaded_data$data$inputs), ",<br>",
+                            pastevector("outputs",uploaded_data$data$outputs),")<br>")
+
+        import_data <- paste0("df_imported <- df %>% <br>",
+                              "dplyr::select(",paste("Iteration",
+                                                     paste(uploaded_data$data$objectives, collapse=","),
+                                                     paste(uploaded_data$data$inputs, collapse=","),
+                                                     paste(uploaded_data$data$outputs, collapse=","),
+                                                     "dplyr::starts_with(c('Rank','Distance'))", collapse=",", sep=","),")<br>")
 
         filters <- unlist(input$datatable_search_columns)
-        filter_data <- paste0("df_filtered <- df_imported %>% dplyr::filter(",
-                              ")<br>")
+        names(filters) <- colnames(uploaded_data$data)
+        filters <- filters[filters != ""]
+        filter_col <- mapply(createfilter, filters, names(filters))
+        if (length(filter_col)==0) {
+            filter_data <- paste0("df_filtered <- df_imported #No filters applied <br>")
+        } else {
+            filter_data <- paste0("df_filtered <- df_imported %>% <br>",
+                                  "dplyr::filter(", paste0(filter_col, collapse=","),")<br>")
+        }
 
-        paste0("set.seed(",seed,")<br> <br>",
-              load_data, "<br> ",
-              select_data, "<br> ",
-              filter_data, "<br> ",
-              paste0("cluster"), "<br> ",
-              paste0("rules <- SCORER::fpm(maxLevel=", input$maxlevel,
-                     ",minSig=",input$minsig,
-                     ",selectedData=)"), "<br> ")
+        clustered_data <- paste0("df_clustered <- df_filtered # Not implemented <br>")
+
+        if (all(df_selected()$sel$Iteration %in% df_filtered()$Iteration)) {
+            selected_data <- "df_selected <- df_clustered # No selected solutions <br> "
+        } else {
+            selected_data <- paste("df_selected <- df_clustered %>% <br>",
+                                   "dplyr::filter(Iteration %in%",
+                                   paste0("c(", paste0(df_selected()$sel$Iteration, collapse=", "),")"),
+                                   ") <br>")
+        }
+
+        rules <- paste("rules <- SCORER::fpm(df_clustered",
+                       paste0("maxLevel=", input$fpmlevel),
+                       paste0("minSig=",input$minsig),
+                       "selectedData=df_selected$Iteration)", sep=", <br>")
+
+        preamble <- paste0("library(SCORER)<br>",
+                           "set.seed(",seed,")<br>")
+        paste(preamble,
+              load_data,
+              import_data,
+              filter_data,
+              clustered_data,
+              selected_data,
+              rules, sep = "<br>")
+    })
+
+    output$generateRcode <- shiny::renderText({
+        getCode()
     })
 }
 

@@ -1,7 +1,7 @@
 #' Perform non-dominated sorting
 #'
 #' @param optresults an OptResults class
-#' @param optGoals objectives from optresults or an character/numeric vector
+#' @param objectives objectives from optresults or an character/numeric vector
 #'   defining the objectives to subset
 #'
 #' @return optresults with ranks
@@ -38,31 +38,33 @@ ndsecr <- function(.data, objectives = attr(.data, "objectives")) {
 #' Normalize values in the optimization data.
 #'
 #' @param .data an OptResults class
-#' @param optGoals Optimization goals
+#' @param objectives Optimization goals
+#' @param limits Named character vector with min and max values for each objective
 #'
 #' @return Normalized values
-normalizeValues <- function(.data, optGoals, limits=NULL) {
+normalizeValues <- function(.data, objectives = attr(.data, "objectives"), limits=NULL) {
   # Make sure that the values are normalized and handled depending on maximize or minimize
-  if (is.null(optGoals)) {
-    optGoals <- attr(.data, "objectives")
+  if (is.null(objectives)) {
+    objectives <- attr(.data, "objectives")
   }
 
   # Normalize and invert if necessary
   # Start with inverting maximization goals
-  # for (i in seq(length(optGoals))) {
-  #   if (optGoals[i]) {
+  # for (i in seq(length(objectives))) {
+  #   if (objectives[i]) {
   #     .data[,i] <- 1/.data[,i]
   #   }
   # }
 
   if(is.null(limits)){
     # Normalize by standard range
-    .data <- BBmisc::normalize(.data, method = "range", margin = 2)
+    for (obj_name in names(objectives)) {
+      .data[,obj_name] <- BBmisc::normalize(.data[,obj_name], method = "range", margin = 2)
+    }
   } else {
     # Normalize by custom limits
-    for (obj_name in names(optGoals)) {
-      test <- BBmisc::normalize(.data[,obj_name], method = "range", margin = 2, range = c(limits[,obj_name][1],limits[,obj_name][2]))
-      .data[,obj_name] <- test
+    for (obj_name in names(objectives)) {
+      .data[,obj_name] <- BBmisc::normalize(.data[,obj_name], method = "range", margin = 2, range = c(limits[,obj_name][1],limits[,obj_name][2]))
     }
   }
   .data
