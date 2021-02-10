@@ -36,7 +36,7 @@ mod_import_server <- function(id) {
     id,
     function(input, output, session) {
       ### Data upload logic ---------------------------------------------
-      uploaded_data <- shiny::reactiveValues(data=NULL)#('data' = FMC)
+      uploaded_data <- shiny::reactiveValues(data = FMC)#data=NULL)
 
       current_data <- reactive({
         uploaded_data$data
@@ -107,6 +107,7 @@ mod_import_server <- function(id) {
         }
       })
 
-      return(current_data)
+      return(shiny::reactive(shiny::reactiveValues(
+        data = current_data())))
     })
 }

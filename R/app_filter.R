@@ -29,15 +29,15 @@ mod_filter_server <- function(id, current_data) {
     function(input, output, session) {
       ### Data filter logic ---------------------------------------------
       df_filtered <- shiny::reactive({
-        if(is.null(nrow(current_data()))){
+        if(is.null(nrow(current_data()$data))){
           return(NULL)
         }
-        current_data()[input$datatable_rows_all,]
+        current_data()$data[input$datatable_rows_all,]
       })
 
-      output$data_name <- shiny::renderText({ current_data()$opt_name })
+      #output$data_name <- shiny::renderText({ current_data()$data$opt_name })
       output$datatable <- DT::renderDataTable({
-        table <- current_data()
+        table <- current_data()$data
         if (is.null(table))
           return(NULL)
 
@@ -55,8 +55,8 @@ mod_filter_server <- function(id, current_data) {
         #ranges$data <- NULL
         #selected_points$data <- NULL
       })
-      return(shiny::reactive({
-        shiny::reactiveValues(data = df_filtered(), filters = input$datatable_search_columns)
-      }))
+
+      return(shiny::reactive(shiny::reactiveValues(
+        data = df_filtered(), filters = input$datatable_search_columns)))
     })
 }

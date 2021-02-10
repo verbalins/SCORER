@@ -70,7 +70,14 @@ mod_cluster_ui <- function(id) {
   ))
 }
 
-cluster_data <- shiny::reactiveValues("data" =list(), "rpart"=list(), "clara"=list(), "kmeans"=list(), "hclust"=list(), "density"=list(), "saved"="")
+cluster_data <- shiny::reactiveValues("data" =list(),
+                                      "rpart"=list(),
+                                      "clara"=list(),
+                                      "kmeans"=list(),
+                                      "hclust"=list(),
+                                      "density"=list(),
+                                      "saved"="",
+                                      "cluster"=NULL)
 
 mod_cluster_server <- function(id, current_data) {
   shiny::moduleServer(id,
@@ -78,12 +85,22 @@ mod_cluster_server <- function(id, current_data) {
     ### Cluster logic ------------------------------------------
     output$clusterDep <- shiny::renderUI({
       ns <- session$ns
-      shiny::selectInput(ns("clusterDep"),"Dependent variables:",choices = c("", ""),multiple = T)
+      shiny::selectInput(ns("clusterDep"),"Dependent variables:", choices = dim_list(), selected = dim_list()$Objectives, multiple = T)
+      # if (is.null(input$clusterDep)) {
+      #   shiny::updateSelectInput(session, ns("clusterDep"), choices=dim_list(), selected=dim_list()$Objectives)
+      # }
     })
 
     output$clusterInDep <- shiny::renderUI({
       ns <- session$ns
-      shiny::selectInput(ns("clusterInDep"), "Independent variables:", choices = c("", ""), multiple = T)
+      shiny::selectInput(ns("clusterInDep"), "Independent variables:", choices = dim_list(), multiple = T)
+    })
+
+    dim_list <- shiny::reactive({
+      list(Objectives=unique(current_data()$data$objectives),
+           Inputs=unique(current_data()$data$inputs),
+           Outputs=unique(current_data()$data$outputs),
+           Filter=unique(grep("Rank|Distance|Cluster",colnames(current_data()$data),value = TRUE)))
     })
 
     output$clusterVizLeft <- shiny::renderPlot({
@@ -96,7 +113,7 @@ mod_cluster_server <- function(id, current_data) {
 
     shiny::observeEvent(input$evalClusPerf, {
       # Ask to scale data
-      cluster_data$data <- current_data() %>% dplyr::select(input$clusterDep, input$clusterInDep)
+      cluster_data$data <- current_data()$data %>% dplyr::select(input$clusterDep, input$clusterInDep)
       if (input$scaleDep) {
         cluster_data$data <- cluster_data$data %>%
           dplyr::mutate(dplyr::across(input$clusterDep, collapse::fscale))
@@ -110,56 +127,63 @@ mod_cluster_server <- function(id, current_data) {
     })
 
     shiny::observeEvent(input$dbmethod, {
-      shinyjs::toggleState("eps", condition = !(input$dbmethod == "HDBSCAN"))
-      shinyjs::toggleState("evalClusPerf", condition = !(input$dbmethod == "HDBSCAN"))
+      ns <- session$ns
+      shinyjs::toggleState(ns("eps"), condition = !(input$dbmethod == "HDBSCAN"))
+      shinyjs::toggleState(ns("evalClusPerf"), condition = !(input$dbmethod == "HDBSCAN"))
     })
 
     shiny::observeEvent(input$evalClusters, {
+      #validate(need(input$clusterDep, label="objectives")) # Needs objectives
+      ns <- session$ns
       # Evaluate the number of clusters to use.
       # Ask to scale data
-      cluster_data$data <- current_data() %>% dplyr::select(input$clusterDep, input$clusterInDep)
+      cluster_data$data <- current_data()$data %>% dplyr::select(input$clusterDep, input$clusterInDep)
       if (input$scaleDep) {
         cluster_data$data <- cluster_data$data %>%
           dplyr::mutate(dplyr::across(input$clusterDep, collapse::fscale))
       }
 
-      if (input$clustTab == "Partitioning" ||
-          input$clustTab == "Hierarchical") {
-        if (input$clustTab == "Hierarchical") {
+      if (input$clustTab == "Partitioning" || input$clustTab == "Hierarchical") {
+
+        if (input$clustTab == "Partitioning") {
           clust_method <- switch (input$clustmethod,
                                   "kmeans" = kmeans,
-                                  "clara" = cluster::clara,)
+                                  "clara" = cluster::clara
+                                  )
         } else {
-          clust_method <- switch (
-            input$hmethod,
-            "hclust" = factoextra::hcut,
-            "agnes" = cluster::agnes,
-            "diana" = cluster::diana
-          )
+          clust_method <- switch (input$hmethod,
+                                  "hclust" = factoextra::hcut,
+                                  "agnes" = cluster::agnes,
+                                  "diana" = cluster::diana
+                                  )
         }
 
         #dissim <- cluster::daisy(cluster_data$data, metric = "gower", stand = TRUE, warnType = FALSE)
 
         #cluster.suggestion <- factoextra::fviz_nbclust(cluster_data$data, diss=dissim, method="silhouette", FUNcluster = clust_method)
-        cluster.suggestion <-
-          factoextra::fviz_nbclust(
+        #cat(file=stderr(), "Starting clustering with", nrow(cluster_data$data), "data rows", "\n")
+        #cat(file=stderr(), "Completed clustering with", k_val, "clusters", "\n")
+
+        output$clusterVizLeft <- shiny::renderPlot({
+          cluster.suggestion <- factoextra::fviz_nbclust(
             as.data.frame(cluster_data$data),
             FUNcluster = clust_method,
             method = "silhouette"
           )
-        output$clusterVizLeft <- shiny::renderPlot({
-          cluster.suggestion
-        })
-        k_val <-
-          as.numeric(dplyr::arrange(cluster.suggestion$data, desc(y))[1, 1])
 
-        output$clusterVizRight <- shiny::renderPlot({
-          factoextra::fviz_cluster(clust_method(as.data.frame(cluster_data$data), k_val), data =
-                                     cluster_data$data)
+          k_val <- as.numeric(dplyr::arrange(cluster.suggestion$data, desc(y))[1, 1])
+
+          output$clusterVizRight <- shiny::renderPlot({
+            factoextra::fviz_cluster(clust_method(as.data.frame(cluster_data$data), k_val), data =
+                                       cluster_data$data)
+          })
+
+          shiny::updateNumericInput(session, "numClustHC", value = k_val)
+          shiny::updateNumericInput(session, "numClust", value = k_val)
+          cluster.suggestion # Plot it
         })
 
-        shiny::updateNumericInput(session, "numClustHC", value = k_val)
-        shiny::updateNumericInput(session, "numClust", value = k_val)
+
       } else if (input$clustTab == "Decision Trees") {
         part.data <- cluster_data$data
         dep <-
@@ -216,8 +240,7 @@ mod_cluster_server <- function(id, current_data) {
       #c("kmeans","pam","clara","fanny")
       if (input$clustTab == "Hierarchical") {
         if (input$hmethod == "hclust") {
-          h.res <-
-            fastcluster::hclust.vector(as.data.frame(cluster_data$data), method = "ward")
+          h.res <- fastcluster::hclust.vector(as.data.frame(cluster_data$data), method = "ward")
           res <- cutree(h.res, k = input$numClustHC)
           clust <- res
         } else if (input$hmethod == "agnes") {
@@ -277,22 +300,27 @@ mod_cluster_server <- function(id, current_data) {
         clust <- cluster_data$density
       }
       # Save selected values from clusterDep
-      uploaded_data$data <-
-        current_data() %>% dplyr::mutate(Cluster = clust)
-      shiny::updateSelectInput(session, "color", choices = c(grep(
-        "Rank|Distance", colnames(current_data()), value = TRUE
-      ), "Cluster"))
+      cluster_data$cluster <- clust
 
       cluster_data$saved <- input$clustTab
 
       output$clusterVizRight <- shiny::renderPlot({
         ggplot2::ggplot(
           as.data.frame(cluster_data$data),
-          ggplot2::aes_string(input$clusterDep[1], input$clusterDep[2])
-        ) +
+          ggplot2::aes_string(input$clusterDep[1], input$clusterDep[2])) +
           ggplot2::geom_point(ggplot2::aes(color = clust)) +
           ggplot2::scale_color_viridis_c()
       })
     })
+
+    df_clustered <- shiny::reactive({
+      if (!is.null(cluster_data$cluster)) {
+        current_data()$data %>% dplyr::mutate(Cluster = cluster_data$cluster)
+      } else {
+        current_data()$data
+      }
+    })
+
+    return(shiny::reactive(shiny::reactiveValues(data = df_clustered())))
   })
 }
