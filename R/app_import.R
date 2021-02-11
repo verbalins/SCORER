@@ -31,83 +31,75 @@ mod_import_ui <- function(id) {
   )
 }
 
-mod_import_server <- function(id) {
+mod_import_server <- function(id, r) {
   shiny::moduleServer(
     id,
     function(input, output, session) {
+      ns <- session$ns
       ### Data upload logic ---------------------------------------------
-      uploaded_data <- shiny::reactiveValues(data = FMC)#data=NULL)
-
-      current_data <- reactive({
-        uploaded_data$data
-      })
-
       data_parameters <- shiny::reactive({
-        if (nrow(current_data())==0 || is.null(current_data())){
+        if (nrow(r$data)==0 || is.null(r$data)){
           return(list(header = "",
                       inputs = "",
                       outputs = "",
                       objectives = ""))
         } else {
-          return(list(header = colnames(current_data()),
-                      inputs = current_data()$inputs,
-                      outputs = current_data()$outputs,
-                      objectives = current_data()$objectives))
+          return(list(header = grep("Rank|Distance|Cluster|Iteration", colnames(r$data), invert = TRUE, value = TRUE),
+                      inputs = r$data$inputs,
+                      outputs = r$data$outputs,
+                      objectives = r$data$objectives))
         }
       })
 
       output$data_inputs <- shiny::renderUI({
-        ns <- session$ns
-        shiny::selectInput(ns("data_inputs"), "Inputs", data_parameters()$header, data_parameters()$inputs, multiple = TRUE)
+        shiny::selectInput(ns("data_inputs"), "Inputs",
+                           data_parameters()$header, isolate(data_parameters()$inputs), multiple = TRUE)
       })
 
       output$data_outputs <- shiny::renderUI({
-        ns <- session$ns
-        shiny::selectInput(ns("data_outputs"), "Outputs", data_parameters()$header, data_parameters()$outputs, multiple = TRUE)
+        shiny::selectInput(ns("data_outputs"), "Outputs",
+                           data_parameters()$header, isolate(data_parameters()$outputs), multiple = TRUE)
       })
 
       output$data_objectives <- shiny::renderUI({
-        ns <- session$ns
-        shiny::selectInput(ns("data_objectives"), "Objectives", data_parameters()$header, data_parameters()$objectives, multiple = TRUE)
+        shiny::selectInput(ns("data_objectives"), "Objectives",
+                           data_parameters()$header, isolate(data_parameters()$objectives), multiple = TRUE)
       })
 
       shiny::observeEvent(input$fileupload, {
-        ns <- session$ns
         new_data <- input$fileupload
         if (!is.null(new_data)) {
           # Start by getting the column names if available
-          uploaded_data$data <- NULL
-
-          uploaded_data$data <- loaddataset(input$fileupload$datapath)
-          uploaded_data$data$opt_name <- tools::file_path_sans_ext(input$fileupload$name)
-          updateSelectInput(session, ns("data_objectives"), selected = unique(uploaded_data$data$objectives))
+          r$data <- NULL
+          r$filepath <- input$fileupload$name
+          r$data <- loaddataset(input$fileupload$datapath)
+          r$data$opt_name <- tools::file_path_sans_ext(input$fileupload$name)
+          shiny::updateSelectInput(session, "data_objectives", selected = isolate(unique(r$data$objectives)))
         }
       })
 
       shiny::observeEvent(input$importData, {
         if (!is.null(input$fileupload)) {
           sel <- c(input$data_inputs, input$data_objectives, input$data_outputs)
-          uploaded_data$data <- uploaded_data$data %>% dplyr::select("Iteration", dplyr::all_of(sel), "Rank")
+          r$data <- r$data %>% dplyr::select("Iteration", dplyr::all_of(sel), "Rank")
 
           if (input$distancemetric) {
-            uploaded_data$data <- uploaded_data$data %>% addDistances(parallelCores = 10)
+            browser()
+            r$data <- r$data %>% addDistances(parallelCores = 10)
           }
 
           if(!is.null(input$data_inputs)) {
-            uploaded_data$data$inputs <- input$data_inputs }
+            r$data$inputs <- input$data_inputs }
           if(!is.null(input$data_objectives)) {
-            uploaded_data$data$objectives <- input$data_objectives }
+            r$data$objectives <- input$data_objectives }
           if(!is.null(input$data_outputs)) {
-            uploaded_data$data$outputs <- input$data_outputs
+            r$data$outputs <- input$data_outputs
           } else {
-            uploaded_data$data$outputs <- uploaded_data$data$parameters[!(uploaded_data$data$parameters %in% c(uploaded_data$data$inputs,
-                                                                                                               uploaded_data$data$objectives))]
-            shiny::updateSelectInput(session,"data_outputs",selected = uploaded_data$data$outputs)
+            browser()
+            r$data$outputs <- r$data$parameters[!(r$data$parameters %in% c(r$data$inputs,r$data$objectives))]
+            shiny::updateSelectInput(session, "data_outputs", selected = isolate(unique(r$data$outputs)))
           }
         }
       })
-
-      return(shiny::reactive(shiny::reactiveValues(
-        data = current_data())))
     })
 }

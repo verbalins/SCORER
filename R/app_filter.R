@@ -23,40 +23,34 @@ mod_filter_ui <- function(id) {
   )
 }
 
-mod_filter_server <- function(id, current_data) {
+mod_filter_server <- function(id, r) {
   shiny::moduleServer(
     id,
     function(input, output, session) {
       ### Data filter logic ---------------------------------------------
-      df_filtered <- shiny::reactive({
-        if(is.null(nrow(current_data()$data))){
-          return(NULL)
-        }
-        current_data()$data[input$datatable_rows_all,]
-      })
+      # df_filtered <- shiny::reactive({
+      #   if(is.null(nrow(r$data))){
+      #     return(NULL)
+      #   }
+      # })
 
-      #output$data_name <- shiny::renderText({ current_data()$data$opt_name })
+      #output$data_name <- shiny::renderText({ r$data$opt_name })
       output$datatable <- DT::renderDataTable({
-        table <- current_data()$data
+        table <- r$data
         if (is.null(table))
           return(NULL)
 
         DT::datatable(table, filter="top", options = list(scrollX = TRUE, scrollY = 600, pageLength = 50), rownames = FALSE)
       })
 
-      output$filterslider <- renderUI({
-        ns <- session$ns
-        minVal <- min(df_filtered()[,input$filters])
-        maxVal <- max(df_filtered()[,input$filters])
-        shiny::sliderInput(ns("filterslider"), "", minVal, max=maxVal,value=c(minVal, maxVal))
-      })
-
       shiny::observeEvent(input$applyfilter, {
-        #ranges$data <- NULL
-        #selected_points$data <- NULL
+        r$filtered_data <- r$data[input$datatable_rows_all,]
+        r$filters <- input$datatable_search_columns
       })
 
-      return(shiny::reactive(shiny::reactiveValues(
-        data = df_filtered(), filters = input$datatable_search_columns)))
+      shiny::observeEvent(input$resetfilter, {
+        r$filtered_data <- r$data
+        r$filters <- NULL
+      })
     })
 }

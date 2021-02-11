@@ -79,12 +79,12 @@ cluster_data <- shiny::reactiveValues("data" =list(),
                                       "saved"="",
                                       "cluster"=NULL)
 
-mod_cluster_server <- function(id, current_data) {
+mod_cluster_server <- function(id, r) {
   shiny::moduleServer(id,
   function(input, output, session) {
+    ns <- session$ns
     ### Cluster logic ------------------------------------------
     output$clusterDep <- shiny::renderUI({
-      ns <- session$ns
       shiny::selectInput(ns("clusterDep"),"Dependent variables:", choices = dim_list(), selected = dim_list()$Objectives, multiple = T)
       # if (is.null(input$clusterDep)) {
       #   shiny::updateSelectInput(session, ns("clusterDep"), choices=dim_list(), selected=dim_list()$Objectives)
@@ -92,15 +92,14 @@ mod_cluster_server <- function(id, current_data) {
     })
 
     output$clusterInDep <- shiny::renderUI({
-      ns <- session$ns
       shiny::selectInput(ns("clusterInDep"), "Independent variables:", choices = dim_list(), multiple = T)
     })
 
     dim_list <- shiny::reactive({
-      list(Objectives=unique(current_data()$data$objectives),
-           Inputs=unique(current_data()$data$inputs),
-           Outputs=unique(current_data()$data$outputs),
-           Filter=unique(grep("Rank|Distance|Cluster",colnames(current_data()$data),value = TRUE)))
+      list(Objectives=unique(r$filtered_data$objectives),
+           Inputs=unique(r$filtered_data$inputs),
+           Outputs=unique(r$filtered_data$outputs),
+           Filter=unique(grep("Rank|Distance|Cluster",colnames(r$filtered_data),value = TRUE)))
     })
 
     output$clusterVizLeft <- shiny::renderPlot({
@@ -113,7 +112,7 @@ mod_cluster_server <- function(id, current_data) {
 
     shiny::observeEvent(input$evalClusPerf, {
       # Ask to scale data
-      cluster_data$data <- current_data()$data %>% dplyr::select(input$clusterDep, input$clusterInDep)
+      cluster_data$data <- r$filtered_data %>% dplyr::select(input$clusterDep, input$clusterInDep)
       if (input$scaleDep) {
         cluster_data$data <- cluster_data$data %>%
           dplyr::mutate(dplyr::across(input$clusterDep, collapse::fscale))
@@ -127,17 +126,15 @@ mod_cluster_server <- function(id, current_data) {
     })
 
     shiny::observeEvent(input$dbmethod, {
-      ns <- session$ns
       shinyjs::toggleState(ns("eps"), condition = !(input$dbmethod == "HDBSCAN"))
       shinyjs::toggleState(ns("evalClusPerf"), condition = !(input$dbmethod == "HDBSCAN"))
     })
 
     shiny::observeEvent(input$evalClusters, {
       #validate(need(input$clusterDep, label="objectives")) # Needs objectives
-      ns <- session$ns
       # Evaluate the number of clusters to use.
       # Ask to scale data
-      cluster_data$data <- current_data()$data %>% dplyr::select(input$clusterDep, input$clusterInDep)
+      cluster_data$data <- r$filtered_data %>% dplyr::select(input$clusterDep, input$clusterInDep)
       if (input$scaleDep) {
         cluster_data$data <- cluster_data$data %>%
           dplyr::mutate(dplyr::across(input$clusterDep, collapse::fscale))
@@ -301,6 +298,7 @@ mod_cluster_server <- function(id, current_data) {
       }
       # Save selected values from clusterDep
       cluster_data$cluster <- clust
+      r$data <- r$filtered_data %>% dplyr::mutate(Cluster = cluster_data$cluster)
 
       cluster_data$saved <- input$clustTab
 
@@ -315,9 +313,9 @@ mod_cluster_server <- function(id, current_data) {
 
     df_clustered <- shiny::reactive({
       if (!is.null(cluster_data$cluster)) {
-        current_data()$data %>% dplyr::mutate(Cluster = cluster_data$cluster)
+        r$data <- r$filtered_data %>% dplyr::mutate(Cluster = cluster_data$cluster)
       } else {
-        current_data()$data
+        r$filtered_data
       }
     })
 

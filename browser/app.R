@@ -87,8 +87,11 @@ dash <- shinydashboard::dashboardPage(
 
 # Define server logic
 server <- function(input, output, session) {
+    # reactiveValues used to hold the data in the app, communication between modules
+    r <- shiny::reactiveValues(data = FMC, filtered_data = FMC)
+
     ### Data import logic ---------------------------------------------
-    current_data <- mod_import_server("import")
+    mod_import_server("import", r)
     # Reset filters on Visualization tab when current_data changes
     # shiny::observe({
     #     current_data
@@ -96,18 +99,17 @@ server <- function(input, output, session) {
     #     selected_points$data <- NULL
     # })
 
-
     ### Data filter logic ---------------------------------------------
-    df_filtered <- mod_filter_server("filter", current_data)
+    mod_filter_server("filter", r)
 
     ### Cluster logic ------------------------------------------------
-    df_clustered <- mod_cluster_server("cluster", df_filtered)
+    mod_cluster_server("cluster", r)
 
     ### Visualization logic ------------------------------------------
-    df_selected <- mod_visualization_server("visualization", df_clustered)
+    mod_visualization_server("visualization", r)
 
     ### Rule logic --------------------------
-    rules <- mod_rule_server("rule", df_clustered, df_selected, list(x = input$x, y = input$y, z = input$z, color = input$color))
+    mod_rule_server("rule", r)
 
     ### Data export logic ---------------------------------------------------
     output$exportData <- shiny::downloadHandler(
@@ -127,10 +129,10 @@ server <- function(input, output, session) {
                     readr::write_lines(file = file)
             } else {
                 data <- switch(input$downloadSelect,
-                               "Imported" = current_data(),
-                               "Filtered" = df_filtered()$data,
-                               "Selected" = df_selected()$sel,
-                               "Rules" = rules$R)
+                               "Imported" = r$data,
+                               "Filtered" = r$filtered_data,
+                               "Selected" = r$df_selected(),
+                               "Rules" = r$R)
                 write.csv2(as.data.frame(data), file, row.names = FALSE)
             }
         }
@@ -144,20 +146,20 @@ server <- function(input, output, session) {
             paste0("dplyr::between(", paste(y, val[1], val[2], sep=","), ")")
         }
 
-        load_data <- paste0("df <- SCORER::loaddataset(file=\"", input$fileupload$name, "\",<br>",
-                            pastevector("objectives",current_data()$objectives), ",<br>",
-                            pastevector("inputs",current_data()$inputs), ",<br>",
-                            pastevector("outputs",current_data()$outputs),")<br>")
+        load_data <- paste0("df <- SCORER::loaddataset(file=\"", r$filepath, "\",<br>",
+                            pastevector("objectives",r$data$objectives), ",<br>",
+                            pastevector("inputs",r$data$inputs), ",<br>",
+                            pastevector("outputs",r$data$outputs),")<br>")
 
         import_data <- paste0("df_imported <- df %>% <br>",
                               "dplyr::select(",paste("Iteration",
-                                                     paste(current_data()$objectives, collapse=","),
-                                                     paste(current_data()$inputs, collapse=","),
-                                                     paste(current_data()$outputs, collapse=","),
+                                                     paste(r$data$objectives, collapse=","),
+                                                     paste(r$data$inputs, collapse=","),
+                                                     paste(r$data$outputs, collapse=","),
                                                      "dplyr::starts_with(c('Rank','Distance'))", collapse=",", sep=","),")<br>")
 
-        filters <- unlist(df_filtered()$filters)
-        names(filters) <- colnames(current_data())
+        filters <- unlist(r$filters)
+        names(filters) <- colnames(r$data)
         filters <- filters[filters != ""]
         filter_col <- mapply(createfilter, filters, names(filters))
         if (length(filter_col)==0) {
@@ -169,18 +171,18 @@ server <- function(input, output, session) {
 
         clustered_data <- paste0("df_clustered <- df_filtered # Not implemented <br>")
 
-        if (nrow(df_selected()$unsel) == 0) {
+        if (nrow(r$df_selected()$unsel) == 0) {
             selected_data <- "df_selected <- df_clustered # No selected solutions <br> "
         } else {
             selected_data <- paste("df_selected <- df_clustered %>% <br>",
                                    "dplyr::filter(Iteration %in%",
-                                   paste0("c(", paste0(df_selected()$sel$Iteration, collapse=", "),")"),
+                                   paste0("c(", paste0(r$df_selected()$sel$Iteration, collapse=", "),")"),
                                    ") <br>")
         }
 
         rules <- paste("rules <- SCORER::fpm(df_clustered",
-                       paste0("maxLevel=", rules$settings$fpmlevel),
-                       paste0("minSig=",rules$settings$minsig),
+                       paste0("maxLevel=", r$fpmlevel),
+                       paste0("minSig=", r$dataminsig),
                        "selectedData=df_selected$Iteration)", sep=", <br>")
 
         preamble <- paste0("library(SCORER)<br>",

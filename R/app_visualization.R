@@ -28,15 +28,15 @@ mod_visualization_ui <- function(id) {
   )
 }
 
-mod_visualization_server <- function(id, df_filtered) {
+mod_visualization_server <- function(id, r) {
   shiny::moduleServer(id,
     function(input, output, session) {
 
       dim_list <- shiny::reactive({
-        list(Objectives=unique(df_filtered()$data$objectives),
-             Inputs=unique(df_filtered()$data$inputs),
-             Outputs=unique(df_filtered()$data$outputs),
-             Filter=unique(grep("Rank|Distance|Cluster",colnames(df_filtered()$data),value = TRUE)))
+        list(Objectives=unique(r$filtered_data$objectives),
+             Inputs=unique(r$filtered_data$inputs),
+             Outputs=unique(r$filtered_data$outputs),
+             Filter=unique(grep("Rank|Distance|Cluster",colnames(r$filtered_data),value = TRUE)))
       })
 
       output$x <- shiny::renderUI({
@@ -56,9 +56,14 @@ mod_visualization_server <- function(id, df_filtered) {
 
       output$color <- shiny::renderUI({
         ns <- session$ns
-        choice <- grep("Rank|Distance|Cluster",colnames(df_filtered()$data),value = TRUE)
+        choice <- grep("Rank|Distance|Cluster",colnames(r$filtered_data),value = TRUE)
         shiny::selectInput(ns("color"), "Color:", choice, selectize = FALSE)
       })
+
+      r$plotdims <- shiny::reactive(list(x = input$x,
+                                    y = input$y,
+                                    z = input$z,
+                                    color = input$color))
 
       output$colorslider <- shiny::renderUI({
         req(input$color)
@@ -66,9 +71,9 @@ mod_visualization_server <- function(id, df_filtered) {
         min_val <- 0
         max_val <- 0
 
-        if(input$color %in% colnames(df_filtered()$data)) {
-          min_val <- floor(min(df_filtered()$data[[input$color]]))
-          max_val <- round(max(df_filtered()$data[[input$color]]),2)
+        if(input$color %in% colnames(r$filtered_data)) {
+          min_val <- floor(min(r$filtered_data[[input$color]]))
+          max_val <- round(max(r$filtered_data[[input$color]]),2)
           stepsize <- switch(input$color, "Rank" = 1, "Distance" = NULL, "Cluster" = 1)
           shiny::sliderInput(ns("colorslider"), "Filter Color:", min_val, max_val, value=c(min_val, max_val), round=-2, step = stepsize)
         }
@@ -79,10 +84,10 @@ mod_visualization_server <- function(id, df_filtered) {
         req(input$color)
         suppressWarnings(
           plotly::plot_ly(type = 'parcoords',
-                          dimensions = create_dimensions_list(df_filtered()$data),
+                          dimensions = create_dimensions_list(r$filtered_data),
                           line=list(color = stats::formula(paste0("~",shiny::isolate(input$color)))),
                           source = "pcoords",
-                          data = df_filtered()$data) %>%
+                          data = r$filtered_data) %>%
             plotly::event_register(event="plotly_restyle") %>%
             plotly::toWebGL()
         )
@@ -90,11 +95,11 @@ mod_visualization_server <- function(id, df_filtered) {
 
       #React to changes to the colouring variable
       # shiny::observeEvent(input$color, {
-      #     if(input$color %in% colnames(df_filtered()$data)) {
+      #     if(input$color %in% colnames(r$filtered_data)) {
       #         isolate({
       #         form <- stats::formula(paste0("~",input$color))
       #         p <- plotly::plotlyProxy("scatter3d", session)
-      #         test <- df_selected()$sel[,input$color]
+      #         test <- r$df_selected()$sel[,input$color]
       #         if (!is.null(cam_3d$scene)) {
       #             #p %>% plotly::plotlyProxyInvoke("relayout", list(scene = list(camera = cam_3d$scene)))
       #             p %>% plotly::plotlyProxyInvoke("relayout",list(scene.camera = cam_3d$scene)) %>%
@@ -119,7 +124,7 @@ mod_visualization_server <- function(id, df_filtered) {
       # Render the scatter3d plot
       output$scatter3d <- plotly::renderPlotly({
         req(input$x, input$y, input$z)
-        SCORER::plot3d(df_selected()$sel, input$x, input$y, input$z, input$color, df_selected()$unsel, height=600, source="s3d")
+        SCORER::plot3d(r$df_selected()$sel, input$x, input$y, input$z, input$color, r$df_selected()$unsel, height=600, source="s3d")
 
       })
 
@@ -160,7 +165,7 @@ mod_visualization_server <- function(id, df_filtered) {
 
       # filter the dataset down to the rows that match the selection ranges
       df_filterdata <- shiny::reactiveValues()
-      df_selected <- shiny::reactive({
+      r$df_selected <- shiny::reactive({
         keep <- TRUE
         for (i in names(ranges$data)) {
           range_ <- ranges$data[[i]]
@@ -170,25 +175,25 @@ mod_visualization_server <- function(id, df_filtered) {
             if (length(rng) == 0) # When deselecting
               keep_var <- TRUE
             else {
-              keep_var <- keep_var | dplyr::between(df_filtered()$data[[i]], min(rng), max(rng))
+              keep_var <- keep_var | dplyr::between(r$filtered_data[[i]], min(rng), max(rng))
             }
           }
           keep <- keep & keep_var
         }
-        parcoords_sel <- df_filtered()$data[keep, ]
+        parcoords_sel <- r$filtered_data[keep, ]
 
         for (i in names(selected_points$data)) {
           parcoords_sel <- parcoords_sel %>% dplyr::filter(Iteration %in% unlist(selected_points$data[i]))
         }
         isolate({
-          if(!is.null(input$colorslider) && input$color %in% colnames(df_filtered()$data)) {
+          if(!is.null(input$colorslider) && input$color %in% colnames(r$filtered_data)) {
             df_filterdata$sel <- parcoords_sel %>%
               dplyr::filter(dplyr::between(.[[input$color]], input$colorslider[1], input$colorslider[2]))
           } else {
             df_filterdata$sel <- parcoords_sel
           }
         })
-        df_filterdata$unsel <- dplyr::anti_join(df_filtered()$data, df_filterdata$sel, by="Iteration")
+        df_filterdata$unsel <- dplyr::anti_join(r$filtered_data, df_filterdata$sel, by="Iteration")
         df_filterdata
       })
 
@@ -198,10 +203,10 @@ mod_visualization_server <- function(id, df_filtered) {
 
       output$plots2d <- shiny::renderUI({
         ns <- session$ns
-        plot_output_list <- lapply(1:length(dim_list()$Objectives)-1, function(i) {
+        plot_output_list <- lapply(seq(1:(length(isolate(r$filtered_data$objectives))-1)), function(i) {
           plotname <- paste0("plot", i)
           plotly::plotlyOutput(ns(plotname), # ns because it's a plotlyOutput
-                               width = paste0(floor((1/(length(dim_list()$Objectives)-1))*100)-1,"%"),
+                               width = paste0(floor((1/(length(r$filtered_data$objectives)-1))*100)-1,"%"),
                                inline = TRUE, height = "100%")
         })
 
@@ -212,24 +217,25 @@ mod_visualization_server <- function(id, df_filtered) {
 
       # Call renderPlot for each one. Plots are only actually generated when they
       # are visible on the web page.
-      shiny::observeEvent({df_filtered}, {
+      shiny::observeEvent({r$filtered_data}, {
         ranges$data <- NULL
         selected_points$data <- NULL
-        max_plots <- length(dim_list()$Objectives)
-        for (i in 1:max_plots-1) {
+        max_plots <- isolate(length(r$filtered_data$objectives))
+        for (i in seq(1:(max_plots-1))) {
           # Need local so that each item gets its own number. Without it, the value
           # of i in the renderPlot() will be the same across all instances, because
           # of when the expression is evaluated.
           local({
             my_i <- i
             plotname <- paste0("plot", my_i) # Don't use ns here
-
+            #x = stats::formula(paste0("~",dim_list()$Objectives[[1]])),
+            #y = stats::formula(paste0("~",dim_list()$Objectives[[my_i+1]])),
             output[[plotname]] <- plotly::renderPlotly({
-              SCORER::plot2d(df_selected()$sel,
-                             df_selected()$sel$objectives[1],
-                             df_selected()$sel$objectives[my_i+1],
+              SCORER::plot2d(r$df_selected()$sel,
+                             r$df_selected()$sel$objectives[[1]],
+                             r$df_selected()$sel$objectives[[my_i+1]],
                              input$color,
-                             df_selected()$unsel,
+                             r$df_selected()$unsel,
                              source = plotname) %>%
                 plotly::toWebGL() %>%
                 plotly::hide_colorbar() %>%
@@ -239,7 +245,7 @@ mod_visualization_server <- function(id, df_filtered) {
         }
       })
 
-      lapply(paste0("plot", seq(1, isolate(length(dim_list()$Objectives))-1)), function(nm) {
+      lapply(paste0("plot", seq(1, isolate(length(r$filtered_data$objectives))-1)), function(nm) {
         #ns <- session$ns
         shiny::observeEvent(plotly::event_data("plotly_selected", source=nm), {
           # inform the module about the new brush range
@@ -261,12 +267,12 @@ mod_visualization_server <- function(id, df_filtered) {
         # Reset the brushing
         selected_points$data <- NULL
         # plotly::plotlyProxy(nm, session) %>%
-        #     plotly::plotlyProxyInvoke("restyle", "data", df_selected())
+        #     plotly::plotlyProxyInvoke("restyle", "data", r$df_selected())
       })
 
-      return(shiny::reactive(shiny::reactiveValues(data = df_selected(),
-                  sel = df_selected()$sel,
-                  unsel = df_selected()$unsel,
+      return(shiny::reactive(shiny::reactiveValues(data = r$df_selected(),
+                  sel = r$df_selected()$sel,
+                  unsel = r$df_selected()$unsel,
                   dim_list = dim_list)))
     })
 }
