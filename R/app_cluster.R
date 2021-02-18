@@ -318,7 +318,5 @@ mod_cluster_server <- function(id, r) {
         r$filtered_data
       }
     })
-
-    return(shiny::reactive(shiny::reactiveValues(data = df_clustered())))
   })
 }

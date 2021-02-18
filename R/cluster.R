@@ -48,6 +48,9 @@ tidy_clust <- function(.dat, nrClusters = 10) {
     ggplot2::geom_line() +
     ggplot2::geom_point()
 
+  ggplot2::ggplot(assignments, ggplot2::aes(x = minLeanBuffer, y = maxOut)) +
+    ggplot2::geom_point(ggplot2::aes(color = .cluster), alpha = 0.8) +
+    ggplot2::facet_wrap(~ k)
 }
 
 partitioning <- function(.data, nrClusters = 5, parameters = c(names(attr(.data,"objectives")))) {

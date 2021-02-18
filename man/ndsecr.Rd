@@ -7,10 +7,10 @@
 ndsecr(.data, objectives = attr(.data, "objectives"))
 }
 \arguments{
-\item{optresults}{an OptResults class}
-
-\item{optGoals}{objectives from optresults or an character/numeric vector
+\item{objectives}{objectives from optresults or an character/numeric vector
 defining the objectives to subset}
+
+\item{optresults}{an OptResults class}
 }
 \value{
 optresults with ranks
