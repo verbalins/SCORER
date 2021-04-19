@@ -13,11 +13,10 @@
 #'
 #' @return A list of lists where each combination of itemsets are considered
 #' @export
-fpm <- function(.data, maxLevel = 1, minSig = 0.5, selectedData=NULL, unselectedData=NULL, useEquality = TRUE, onlyMostSignificant = TRUE) {
+fpm <- function(.data, maxLevel = 1, minSig = 0.5, selectedData, unselectedData=NULL, useEquality = TRUE, onlyMostSignificant = TRUE) {
   # We filter on the inputs of the data
   inputs <- .data %>% dplyr::select(Iteration,.$inputs)
   #truth_table <- tibble::tibble(.rows=nrow(inputs))
-
   all_rules <- list()
   comb <- NULL
   for (i in seq(1,maxLevel)) { # Create each level of rules
@@ -68,6 +67,7 @@ create_rules <- function(data, level, minSig, selectedData) {
 }
 
 #' @importFrom rlang :=
+#' @importFrom foreach %dopar%
 create_truth_table <- function(.data, useEquality, rules = NULL) {
   col_name <- .data$inputs
   if (is.null(rules)) {
@@ -80,15 +80,23 @@ create_truth_table <- function(.data, useEquality, rules = NULL) {
     rules <- apply(rules[seq(1,nrow(rules)),], 1, function(x) { paste0(x, collapse=" & ")})
   }
 
-  for (rule in rules) {
-    .data <- .data %>% dplyr::mutate(!!(rule) := dplyr::if_else(eval(rlang::parse_expr(as.character(rule))),1,0))
+  doParallel::registerDoParallel(parallel::detectCores()-2)
+  #newdata <- tibble::new_tibble(nrow=nrow(.data))
+  newdata <- foreach::foreach(rule = 1:length(rules), .combine=cbind) %dopar% {
+    .data %>% dplyr::mutate(!!(rules[rule]) := dplyr::if_else(eval(rlang::parse_expr(as.character(rules[rule]))),1,0), .keep="none")
   }
 
-  .data %>% dplyr::select(-(2:length(col_name)))
+  #for (rule in rules) {
+  #  .data <- .data %>% dplyr::mutate(!!(rule) := dplyr::if_else(eval(rlang::parse_expr(as.character(rule))),1,0))
+  #}
+  doParallel::stopImplicitCluster()
+  #.data <- cbind(.data, newdata)
+
+  .data %>% dplyr::select(Iteration) %>% cbind(newdata)
 }
 
 create_first_rules <- function(col_name, data, params) {
-  col_rule <- paste0(col_name, sapply(sort(unique(data[[col_name]])), function(x) paste0(params, x)))
+  col_rule <- paste0(col_name, sapply(sort(unique(ceiling(data[[col_name]]*1000)/1000)), function(x) paste0(params, x)))
   col_rule <- col_rule[2:length(col_rule)] # Remove first
   col_rule[1:length(col_rule)-1] # Remove last element
 }

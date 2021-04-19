@@ -40,13 +40,14 @@ def FPM(minimumSig, parameterNames, selectedData, unselectedData, useEquality = 
         data = list(set(data))
         levelmat[i] = data
         totalDistinctVars = totalDistinctVars + len(levelmat[i])
-        
+    
+    
     ueq = 3
     if not useEquality:
         ueq = 2
         
     noofcolumns = totalDistinctVars * ueq - (2*numVariables)
-    
+
     columns = [None] * noofcolumns
     colIndex = 0
     
@@ -94,6 +95,7 @@ def FPM(minimumSig, parameterNames, selectedData, unselectedData, useEquality = 
             numAdded = numAdded+1
             
         i = i+1
+        
     if not onlyMostSignificant:
         finalMDRs = [None]*firstZero
         numAdded = 0

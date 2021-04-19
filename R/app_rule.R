@@ -43,6 +43,7 @@ mod_rule_ui <- function(id) {
 mod_rule_server <- function(id, rVal) {
   shiny::moduleServer(id,
     function(input, output, session) {
+      ns <- session$ns
       output$ruletable <- DT::renderDT(data.frame())
       output$pyruletable <- DT::renderDT(data.frame())
 
@@ -52,6 +53,12 @@ mod_rule_server <- function(id, rVal) {
         }
         sel <- rVal$df_selected()$sel %>% dplyr::select(.$inputs) %>% as.data.frame()
         unsel <- rVal$df_selected()$unsel %>% dplyr::select(.$inputs) %>% as.data.frame()
+
+        rVal$rulesR <- fpm(rVal$filtered_data,
+                           maxLevel = input$fpmlevel,
+                           minSig = input$minsig,
+                           selectedData = rVal$df_selected()$sel$Iteration) %>%
+          dplyr::select(Rule, Significance, Unsignificance, Ratio)
 
         reticulate::source_python('../py/FPM.py')
 
@@ -64,12 +71,6 @@ mod_rule_server <- function(id, rVal) {
           dplyr::mutate(Rule = paste(Parameter, Sign, round(Value,0)),
                         Significance = SEL,
                         Unsignificance = UNSEL) %>%
-          dplyr::select(Rule, Significance, Unsignificance, Ratio)
-
-        rVal$rulesR <- fpm(rVal$filtered_data,
-                       maxLevel = input$fpmlevel,
-                       minSig = input$minsig,
-                       selectedData = rVal$df_selected()$sel$Iteration) %>%
           dplyr::select(Rule, Significance, Unsignificance, Ratio)
 
         rVal$minsig <- input$minsig

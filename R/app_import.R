@@ -95,7 +95,7 @@ mod_import_server <- function(id, r) {
           if(!is.null(input$data_outputs)) {
             r$data$outputs <- input$data_outputs
           } else {
-            browser()
+            #browser()
             r$data$outputs <- r$data$parameters[!(r$data$parameters %in% c(r$data$inputs,r$data$objectives))]
             shiny::updateSelectInput(session, "data_outputs", selected = isolate(unique(r$data$outputs)))
           }
