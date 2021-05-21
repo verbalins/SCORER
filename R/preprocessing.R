@@ -55,8 +55,9 @@ addDistances <- function(.data, parallelCores = 0) {
 }
 
 # Private functions
-euclidean_distance_vector <- function(x,y) {
-  x <- x %>% dplyr::select(names(attr(y, "objectives")))
-  x <- x[rep(seq_len(nrow(x)), times=nrow(y)),]
-  min(sqrt(rowSums((x-y)**2)))
+# Solutions is a data.frame supplying the current value to evaluate against all values in interpolant
+euclidean_distance_vector <- function(solutions, interpolant) {
+  solutions <- solutions %>% dplyr::select(names(attr(interpolant, "objectives")))
+  solutions <- solutions[rep(seq_len(nrow(solutions)), times=nrow(interpolant)),]
+  min(sqrt(rowSums((solutions-interpolant)**2)))
 }

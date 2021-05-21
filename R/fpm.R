@@ -10,10 +10,23 @@
 #' Flexible pattern mining in R(), returns rules to reach certain areas in the objectives space
 #'
 #' @param .data Data input, obtained using [SCORER::loaddataset()]
+#' @param selectedData The selected solutions, either a vector of iterations or a named list of objectives and their values
 #'
 #' @return A list of lists where each combination of itemsets are considered
 #' @export
 fpm <- function(.data, maxLevel = 1, minSig = 0.5, selectedData, unselectedData=NULL, useEquality = TRUE, onlyMostSignificant = TRUE) {
+  # Determine if selectedData is just iterations or a reference point
+  if (!is.numeric(selectedData)) {
+    # If the provided data is a reference point, utilize the k-nearest solutions.
+    # 20% of the closest solutions on the pareto-optimal front
+    test <- .data %>% dplyr::filter(Rank == 1)
+    selectedData <-
+      test %>% dplyr::mutate(Distance = sqrt(rowSums((test %>% dplyr::select(names(selectedData)) - selectedData) ** 2))) %>%
+      dplyr::distinct(across(names(selectedData)), .keep_all = TRUE) %>%
+      dplyr::arrange(Distance) %>%
+      head(n = 0.2 * nrow(.)) %>%
+      dplyr::pull(Iteration)
+  }
   # We filter on the inputs of the data
   inputs <- .data %>% dplyr::select(Iteration,.$inputs)
   #truth_table <- tibble::tibble(.rows=nrow(inputs))

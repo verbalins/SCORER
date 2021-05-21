@@ -6,20 +6,21 @@ new_optresult <- function(data, opt_name, opt_id, objectives, inputs, outputs, p
                                              objectives = objectives,
                                              inputs = inputs,
                                              outputs = outputs,
-                                             parameters = parameters))
+                                             parameters = parameters,
+                                             pareto = data %>% dplyr::filter(Rank == 1)))
 }
 
 #' @export
 `$.OptResult` <- function(x, value, ...) {
   #stopifnot(is.OptResult(value))
-  if (value %in% c("objectives", "inputs", "outputs", "parameters", "opt_name", "opt_id")) {
+  if (value %in% c("objectives", "inputs", "outputs", "parameters", "opt_name", "opt_id", "pareto")) {
     if (value=="objectives"){
       names(attr(x, value))
     } else {
       attr(x, value)
     }
   } else {
-    NextMethod(x, value, ...)
+    NextMethod()
   }
 }
 
@@ -35,7 +36,7 @@ new_optresult <- function(data, opt_name, opt_id, objectives, inputs, outputs, p
     }
     return(x)
   } else {
-    return(NextMethod(x, name, value))
+    return(NextMethod())
   }
 }
 
