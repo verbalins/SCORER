@@ -95,7 +95,7 @@ create_truth_table <- function(.data, useEquality, rules = NULL) {
 
   doParallel::registerDoParallel(parallel::detectCores()-2)
   #newdata <- tibble::new_tibble(nrow=nrow(.data))
-  newdata <- foreach::foreach(rule = 1:length(rules), .combine=cbind) %dopar% {
+  newdata <- foreach::foreach(rule = 1:length(rules), .combine=cbind, .packages=c("dplyr")) %dopar% {
     .data %>% dplyr::mutate(!!(rules[rule]) := dplyr::if_else(eval(rlang::parse_expr(as.character(rules[rule]))),1,0), .keep="none")
   }
 

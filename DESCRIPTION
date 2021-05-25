@@ -33,7 +33,9 @@ Imports:
     scales,
     shiny,
     shinydashboard,
-    fastcluster
+    fastcluster,
+    foreach,
+    doParallel
 RoxygenNote: 7.1.1
 Roxygen: list(markdown = TRUE)
 Suggests: 

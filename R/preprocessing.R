@@ -2,14 +2,14 @@
 #   Find the minimum RSME to a Pareto-optimal solution
 #     Pareto-optimal solutions have Rank 1, placed in Y
 addDistances <- function(.data, parallelCores = 0) {
-  objectives = attr(.data, "objectives")
+  objectives = attr(.data, "objectives")[.data$objectives %in% names(.data)]
   limits <- sapply(.data[,names(objectives)], function(x) {c(min(x), max(x))})
   .data[,names(objectives)] <- normalizeValues(.data[,names(objectives)], objectives)
 
   # Extract the interpolant, i.e., the non-dominated solutions.
   interpolant <- .data %>%
     dplyr::filter(Rank == 1) %>%
-    dplyr::select(names(attr(.data, "objectives")))
+    dplyr::select(names(objectives))
 
   if (parallelCores > 0){
     # The dominated solutions
@@ -30,8 +30,8 @@ addDistances <- function(.data, parallelCores = 0) {
 
     doParallel::registerDoParallel(parallelCores)
     "%dopar%"<- foreach::"%dopar%"
-    res <- foreach::foreach(i=iterators::icount(nrow(cont)), .combine=progcombine()) %dopar% {
-      euclidean_distance_vector(cont[i,names(objectives)], interpolant)
+    res <- foreach::foreach(i=iterators::icount(nrow(cont)), .combine=progcombine(), .packages = c("dplyr")) %dopar% {
+      euclidean_distance_vector(cont[i,names(objectives)], interpolant, objectives)
     }
     doParallel::stopImplicitCluster()
 
@@ -46,7 +46,7 @@ addDistances <- function(.data, parallelCores = 0) {
   } else {
     .data <- .data %>%
       dplyr::rowwise() %>%
-      dplyr::mutate(Distance = (Rank != 1) * euclidean_distance_vector(dplyr::cur_data(), interpolant)) %>%
+      dplyr::mutate(Distance = (Rank != 1) * euclidean_distance_vector(dplyr::cur_data(), interpolant, objectives)) %>%
       dplyr::ungroup()
   }
 
@@ -56,8 +56,8 @@ addDistances <- function(.data, parallelCores = 0) {
 
 # Private functions
 # Solutions is a data.frame supplying the current value to evaluate against all values in interpolant
-euclidean_distance_vector <- function(solutions, interpolant) {
-  solutions <- solutions %>% dplyr::select(names(attr(interpolant, "objectives")))
+euclidean_distance_vector <- function(solutions, interpolant, objectives) {
+  solutions <- solutions %>% dplyr::select(names(objectives))
   solutions <- solutions[rep(seq_len(nrow(solutions)), times=nrow(interpolant)),]
-  min(sqrt(rowSums((solutions-interpolant)**2)))
+  min(sqrt(rowSums((solutions-interpolant)^2)))
 }

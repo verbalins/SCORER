@@ -16,6 +16,8 @@ new_optresult <- function(data, opt_name, opt_id, objectives, inputs, outputs, p
   if (value %in% c("objectives", "inputs", "outputs", "parameters", "opt_name", "opt_id", "pareto")) {
     if (value=="objectives"){
       names(attr(x, value))
+    } else if (value=="pareto"){
+      x %>% dplyr::filter(Rank == 1)
     } else {
       attr(x, value)
     }
