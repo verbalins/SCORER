@@ -31,7 +31,7 @@ new_optresult <- function(data, opt_name, opt_id, objectives, inputs, outputs, p
   #stopifnot(is.OptResult(value))
   #var <- unlist(...)
   if (name %in% c("objectives", "inputs", "outputs", "parameters", "opt_name", "opt_id")) {
-    if (name =="objectives"){
+    if (name =="objectives") {
       names(attr(x, name)) <- value
     } else {
       attr(x, name) <- value

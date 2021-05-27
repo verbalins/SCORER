@@ -43,8 +43,6 @@ options(shiny.maxRequestSize = 30*1024^2) # 30MB
 #options(shiny.error = browser)
 #options(shiny.reactlog = TRUE)
 
-debug <- FALSE
-
 exportUI <- shiny::fillPage(
     shinydashboard::box(title="Download data",
         shiny::helpText("Specify the data to download."),
@@ -88,9 +86,9 @@ dash <- shinydashboard::dashboardPage(
 # Define server logic
 server <- function(input, output, session) {
     # reactiveValues used to hold the data in the app, communication between modules
-    r <- shiny::reactiveValues(data = FMC, filtered_data = FMC)
+    r <- shiny::reactiveValues(data = ACM, filtered_data = ACM)
 
-    ### Data import logic ---------------------------------------------
+    ### Data import logic --------------------------------------------
     mod_import_server("import", r)
     # Reset filters on Visualization tab when current_data changes
     # shiny::observe({
@@ -99,7 +97,7 @@ server <- function(input, output, session) {
     #     selected_points$data <- NULL
     # })
 
-    ### Data filter logic ---------------------------------------------
+    ### Data filter logic --------------------------------------------
     mod_filter_server("filter", r)
 
     ### Cluster logic ------------------------------------------------
@@ -108,22 +106,19 @@ server <- function(input, output, session) {
     ### Visualization logic ------------------------------------------
     mod_visualization_server("visualization", r)
 
-    ### Rule logic --------------------------
+    ### Rule logic ---------------------------------------------------
     mod_rule_server("rule", r)
 
-    ### Data export logic ---------------------------------------------------
+    ### Data export logic --------------------------------------------
     output$exportData <- shiny::downloadHandler(
         filename = function() {
             opt_name <- df_filtered()$data$opt_name
-            if (input$downloadSelect =="Code") {
-                paste0(opt_name,"-",input$downloadSelect,".R")
-            } else {
-                paste0(opt_name,"-",input$downloadSelect,".csv")
-            }
-
+            paste0(opt_name, "-",
+                   input$downloadSelect,
+                   ifelse(input$downloadSelect == "Code", ".R", ".csv"))
         },
         content = function(file) {
-            if (input$downloadSelect =="Code") {
+            if (input$downloadSelect == "Code") {
                 getCode() %>%
                     stringr::str_replace_all(pattern = "<br>", replacement = "\n") %>%
                     readr::write_lines(file = file)
@@ -157,7 +152,7 @@ server <- function(input, output, session) {
                                                      paste(r$data$inputs, collapse=","),
                                                      paste(r$data$outputs, collapse=","),
                                                      "dplyr::starts_with(c('Rank','Distance'))", collapse=",", sep=","),")<br>")
-
+        browser()
         filters <- unlist(r$filters)
         names(filters) <- colnames(r$data)
         filters <- filters[filters != ""]
