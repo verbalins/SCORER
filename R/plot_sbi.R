@@ -162,6 +162,10 @@ plot3d <- function(.data, x, y, z, color, unselected_data = NULL, ...) {
   }
 }
 
+plotnd <- function(.data, dimensions, ...) {
+
+}
+
 addunselected <- function(.plot, unselected_data) {
   .plot %>% plotly::add_trace(
     color = I("gray"),

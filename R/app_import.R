@@ -40,7 +40,6 @@ mod_import_server <- function(id, r) {
     id,
     function(input, output, session) {
       ns <- session$ns
-      "%>%" <- magrittr::"%>%"
       ### Data upload logic ---------------------------------------------
       data_parameters <- shiny::reactive({
         if (nrow(r$data) == 0 || is.null(r$data)) {
@@ -100,27 +99,26 @@ mod_import_server <- function(id, r) {
             dplyr::select("Iteration", dplyr::all_of(sel), "Rank")
 
           if (input$distancemetric) {
-            browser()
             r$data <- r$data %>% add_distances(parallelCores = 10)
           }
 
-          if (!is.null(input$data_inputs)) {
-            r$data$inputs <- input$data_inputs
+          if(!is.null(input$data_inputs)) {
+            r$data$inputs <- input$data_inputs }
+
+          if(!is.null(input$data_objectives)) {
+            attr(r$data, "objectives") <- attr(r$data, "objectives")[input$data_objectives]
           }
 
-          if (!is.null(input$data_objectives)) {
-            r$data$objectives <- input$data_objectives
-          }
-
-          if (!is.null(input$data_outputs)) {
+          if(!is.null(input$data_outputs)) {
             r$data$outputs <- input$data_outputs
           } else {
-            #browser()
             r$data$outputs <- r$data$parameters[!(r$data$parameters %in% c(r$data$inputs,r$data$objectives))]
             shiny::updateSelectInput(session,
                                      "data_outputs",
                                      selected = shiny::isolate(unique(r$data$outputs)))
           }
+
+          r$filtered_data <- r$data
         }
       })
     })

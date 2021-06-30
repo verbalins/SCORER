@@ -25,7 +25,7 @@ ndsecr <- function(.data, objectives = attr(.data, "objectives")) {
 
   if ("Rank" %in% names(.data)) {
     cat("Column Rank is already present, renaming to OldRank.", "\n")
-    .data <- .data %>% dplyr::rename(OldRank = Rank)
+    .data <- .data %>% dplyr::select(-dplyr::matches("OldRank")) %>% dplyr::rename(OldRank = Rank)
   }
   optresults <- dplyr::bind_cols(.data, ecr::doNondominatedSorting(t(optData))) %>%
     dplyr::rename(Rank = ranks) %>%

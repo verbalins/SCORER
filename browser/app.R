@@ -116,7 +116,7 @@ server <- function(input, output, session) {
     # TODO: Default values set, change for prod
     r <- shiny::reactiveValues(data = SCORER::FMC, filtered_data = SCORER::FMC)
 
-    ### Data import logic ---------------------------------------------
+    ### Data import logic --------------------------------------------
     mod_import_server("import", r)
     # Reset filters on Visualization tab when current_data changes
     # shiny::observe({
@@ -134,19 +134,16 @@ server <- function(input, output, session) {
     ### Visualization logic ------------------------------------------
     mod_visualization_server("visualization", r)
 
-    ### Rule logic --------------------------
+    ### Rule logic ---------------------------------------------------
     mod_rule_server("rule", r)
 
     ### Data export logic --------------------------------------------
     output$export_data <- shiny::downloadHandler(
         filename = function() {
             opt_name <- df_filtered()$data$opt_name
-            if (input$downloadSelect == "Code") {
-                paste0(opt_name, "-", input$downloadSelect, ".R")
-            } else {
-                paste0(opt_name, "-", input$downloadSelect, ".csv")
-            }
-
+            paste0(opt_name, "-",
+                   input$downloadSelect,
+                   ifelse(input$downloadSelect == "Code", ".R", ".csv"))
         },
         content = function(file) {
             if (input$downloadSelect == "Code") {

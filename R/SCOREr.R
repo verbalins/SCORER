@@ -18,6 +18,8 @@ new_optresult <- function(data, opt_name, opt_id, objectives,
   if (value %in% c("objectives", "inputs", "outputs", "parameters", "opt_name", "opt_id", "pareto")) {
     if (value == "objectives"){
       names(attr(x, value))
+    } else if (value=="pareto"){
+      x %>% dplyr::filter(Rank == 1)
     } else {
       attr(x, value)
     }
@@ -31,7 +33,7 @@ new_optresult <- function(data, opt_name, opt_id, objectives,
   #stopifnot(is.OptResult(value))
   #var <- unlist(...)
   if (name %in% c("objectives", "inputs", "outputs", "parameters", "opt_name", "opt_id")) {
-    if (name =="objectives"){
+    if (name =="objectives") {
       names(attr(x, name)) <- value
     } else {
       attr(x, name) <- value

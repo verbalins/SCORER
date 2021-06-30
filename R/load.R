@@ -4,7 +4,7 @@
 #' @param filename A csv file containing formatted optimization data from Opt
 #' @param objectives A character vector naming the objectives
 #' @param inputs A character vector naming the inputs
-#' @param outputs A character vector naming the ouputs
+#' @param outputs A character vector naming the outputs
 #' @param custom_outputs A character vector describing custom outputs
 #'
 #' @return A dataframe with the data
@@ -19,10 +19,9 @@ loaddataset <- function(filename, objectives=NULL, inputs=NULL,
 
   opt <- opt_info %>%
     utils::head(.,-4) %>%
-    readr::read_delim(delim = ";", trim_ws = T, locale = cust_locale) %>%
-    dplyr::select(-dplyr::any_of(c("Replications", "ConstraintViolation")),
-                  maxOut = dplyr::starts_with("maxTP")) %>%
-    dplyr::select(where(\(x) { !all(is.na(x)) }))
+    readr::read_delim(delim=";",trim_ws = TRUE, locale = cust_locale) %>%
+    dplyr::select(-dplyr::any_of(c("Replications", "Error", "ConstraintViolation")), maxOut = dplyr::starts_with("maxTP")) %>%
+    dplyr::select(where(function(x){!all(is.na(x))}))
 
   # TODO: Evaluate if parameters are at the bottom.
   # If so, extract them
@@ -36,9 +35,9 @@ loaddataset <- function(filename, objectives=NULL, inputs=NULL,
     dplyr::pull(2)
 
   opt_parameters <- opt_info %>%
-    readr::read_delim(delim = ";", skip = 1, n_max = 1, col_names = FALSE,
-                      trim_ws = T, locale = cust_locale) %>%
-    dplyr::select(!! - 1, -((length(.) - 1):length(.))) %>%
+    readr::read_delim(delim=";", skip = 1, n_max = 1, col_names = FALSE,trim_ws = T, locale = cust_locale) %>%
+    #dplyr::select(!!-1, -((length(.)-1):length(.))) %>%
+    dplyr::select(!!-1) %>%
     dplyr::slice() %>%
     unlist(., use.names = FALSE)
 
@@ -71,12 +70,13 @@ loaddataset <- function(filename, objectives=NULL, inputs=NULL,
 
   outputs <- opt_parameters[!(opt_parameters %in% inputs)]
 
+  # Add Iteration if it doesn't exist, set Iteration in loaded order
   if (!("Iteration" %in% colnames(opt))) {
-    opt <- opt %>% dplyr::mutate(Iteration = seq(1, nrow(.)), .before = names(opt_objectives)[1])
-    #opt_parameters <- c("Iteration", opt_parameters)
+    opt <- opt %>% dplyr::mutate(Iteration = seq(1,nrow(.)), .before=names(opt_objectives)[1])
   }
 
-  if (!("Rank" %in% colnames(opt))) {
+  # Add Rank if it doesn't exist, for all objectives
+  if(!("Rank" %in% colnames(opt))) {
     opt <- opt %>% ndsecr(objectives = opt_objectives)
   }
 

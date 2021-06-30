@@ -3,32 +3,20 @@
 #' `fpm()` returns rules in the decision space to reach certain areas in the
 #' objectives space.
 #'
-#' Flexible pattern mining \insertCite{Bandaru2017b}{SCORER} implemented in R().
-#'
+==== BASE ====
 #' @param .data Data input, obtained using [SCORER::loaddataset()]
-#' @param max_level The maximum level of rules to be returned, default 1
-#' @param min_sig Minimum significance a rule will have to meet to be included
-#' @param selected_data The selected solutions, either a vector of iterations or a named list of objectives and their values
-#' @param unselected_data The rest of the solutions not in [selected_data]
-#' @param use_equality Include rules such as x == 1?
-#' @param only_most_significant Only return the most significant rules?
+#' @param selectedData The selected solutions, either a vector of iterations or a named list of objectives and their values
+==== BASE ====
+#'
+==== BASE ====
 #' @return A list of lists where each combination of itemsets are considered
+==== BASE ====
 #' @export
-#' @importFrom magrittr %>%
-#' @importFrom Rdpack reprompt
-#' @references{
-#'  \insertAllCited{}
-#' }
-fpm <- function(.data,
-                max_level = 1,
-                min_sig = 0.5,
-                selected_data,
-                unselected_data = NULL,
-                use_equality = TRUE,
-                only_most_significant = TRUE) {
-
-  # Determine if selected_data is just iterations or a reference point
-  if (!is.numeric(selected_data)) {
+==== BASE ====
+fpm <- function(.data, maxLevel = 1, minSig = 0.5, selectedData, unselectedData=NULL, useEquality = TRUE, onlyMostSignificant = TRUE) {
+  # Determine if selectedData is just iterations or a reference point
+  if (!is.numeric(selectedData)) {
+==== BASE ====
     # If the provided data is a reference point, utilize the k-nearest solutions.
     # 20% of the closest solutions on the pareto-optimal front
     test <- .data %>% dplyr::filter(dplyr::across("Rank") == 1)
@@ -68,7 +56,8 @@ fpm <- function(.data,
            dplyr::arrange(dplyr::desc(Ratio)))
 }
 
-create_rules <- function(data, level, min_sig, selected_data) {
+# Create the rules
+create_rules <- function(data, level, minSig, selectedData) {
   # Create rules
   # Make sure to delete rules with equal values, keep the one with ==
   tib <- tibble::tibble(Rule = data %>%
@@ -114,6 +103,7 @@ create_rules <- function(data, level, min_sig, selected_data) {
     dplyr::arrange(dplyr::desc(Ratio))
 }
 
+# Creating the truth table for this rule level
 #' @importFrom rlang :=
 #' @importFrom foreach %dopar%
 create_truth_table <- function(.data, use_equality, rules = NULL) {
@@ -128,21 +118,20 @@ create_truth_table <- function(.data, use_equality, rules = NULL) {
     rules <- apply(rules[seq_len(nrow(rules)), ], 1, \(x) { paste0(x, collapse = " & ")})
   }
 
-  doParallel::registerDoParallel(parallel::detectCores() - 2)
+  cl <- parallel::makeCluster(parallel::detectCores(TRUE)-1)
+  doParallel::registerDoParallel(cl)
 
-  newdata <- foreach::foreach(rule = seq_along(rules), .combine = cbind) %dopar% {
-    .data %>%
-      dplyr::mutate(
-        !!(rules[rule]) := dplyr::if_else(
-          eval(rlang::parse_expr(as.character(rules[rule]))), 1, 0),
-        .keep="none")
+  newdata <- foreach::foreach(rule = 1:length(rules), .combine=cbind, .packages=c("dplyr")) %dopar% {
+    .data %>% dplyr::mutate(!!(rules[rule]) := dplyr::if_else(eval(rlang::parse_expr(as.character(rules[rule]))),1,0), .keep="none")
   }
 
   doParallel::stopImplicitCluster()
+  parallel::stopCluster(cl)
 
   .data %>% dplyr::select(Iteration) %>% cbind(newdata)
 }
 
+# The initially created rules
 create_first_rules <- function(col_name, data, params) {
   col_rule <- paste0(col_name,
                      sapply(sort(unique(ceiling(data[[col_name]] * 1000) / 1000)),
