@@ -1,20 +1,22 @@
 #S3 implementation
-new_optresult <- function(data, opt_name, opt_id, objectives, inputs, outputs, parameters) {
-  tibble::validate_tibble(tibble::new_tibble(data, class = "OptResult",
-                                             opt_name = opt_name,
-                                             opt_id = opt_id,
-                                             objectives = objectives,
-                                             inputs = inputs,
-                                             outputs = outputs,
-                                             parameters = parameters,
-                                             pareto = data %>% dplyr::filter(Rank == 1)))
+new_optresult <- function(data, opt_name, opt_id, objectives,
+                          inputs, outputs, parameters) {
+  tibble::validate_tibble(
+    tibble::new_tibble(data, class = "OptResult",
+                       opt_name = opt_name,
+                       opt_id = opt_id,
+                       objectives = objectives,
+                       inputs = inputs,
+                       outputs = outputs,
+                       parameters = parameters,
+                       pareto = data %>% dplyr::filter(Rank == 1)))
 }
 
 #' @export
 `$.OptResult` <- function(x, value, ...) {
   #stopifnot(is.OptResult(value))
   if (value %in% c("objectives", "inputs", "outputs", "parameters", "opt_name", "opt_id", "pareto")) {
-    if (value=="objectives"){
+    if (value == "objectives"){
       names(attr(x, value))
     } else {
       attr(x, value)

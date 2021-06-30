@@ -1,68 +1,100 @@
-# Functions to implement Flexible Pattern Mining
-# Defined in:
-#     Bandaru, S., Ng, A. H. C., & Deb, K. (2016). Data Mining Methods for Knowledge Discovery in Multi-Objective Optimization: Part B-New Developments and Applications.
-#     Expert Systems With Applications, 70, 119–138. https://doi.org/10.1016/j.eswa.2016.10.016
-# Implementation:
-#
-
 #' Flexible Pattern Mining FPM
 #'
-#' Flexible pattern mining in R(), returns rules to reach certain areas in the objectives space
+#' `fpm()` returns rules in the decision space to reach certain areas in the
+#' objectives space.
+#'
+#' Flexible pattern mining \insertCite{Bandaru2017b}{SCORER} implemented in R().
 #'
 #' @param .data Data input, obtained using [SCORER::loaddataset()]
-#' @param selectedData The selected solutions, either a vector of iterations or a named list of objectives and their values
-#'
+#' @param max_level The maximum level of rules to be returned, default 1
+#' @param min_sig Minimum significance a rule will have to meet to be included
+#' @param selected_data The selected solutions, either a vector of iterations or a named list of objectives and their values
+#' @param unselected_data The rest of the solutions not in [selected_data]
+#' @param use_equality Include rules such as x == 1?
+#' @param only_most_significant Only return the most significant rules?
 #' @return A list of lists where each combination of itemsets are considered
 #' @export
-fpm <- function(.data, maxLevel = 1, minSig = 0.5, selectedData, unselectedData=NULL, useEquality = TRUE, onlyMostSignificant = TRUE) {
-  # Determine if selectedData is just iterations or a reference point
-  if (!is.numeric(selectedData)) {
+#' @importFrom magrittr %>%
+#' @importFrom Rdpack reprompt
+#' @references{
+#'  \insertAllCited{}
+#' }
+fpm <- function(.data,
+                max_level = 1,
+                min_sig = 0.5,
+                selected_data,
+                unselected_data = NULL,
+                use_equality = TRUE,
+                only_most_significant = TRUE) {
+
+  # Determine if selected_data is just iterations or a reference point
+  if (!is.numeric(selected_data)) {
     # If the provided data is a reference point, utilize the k-nearest solutions.
     # 20% of the closest solutions on the pareto-optimal front
-    test <- .data %>% dplyr::filter(Rank == 1)
-    selectedData <-
-      test %>% dplyr::mutate(Distance = sqrt(rowSums((test %>% dplyr::select(names(selectedData)) - selectedData) ** 2))) %>%
-      dplyr::distinct(across(names(selectedData)), .keep_all = TRUE) %>%
+    test <- .data %>% dplyr::filter(dplyr::across("Rank") == 1)
+    selected_data <-
+      test %>%
+      dplyr::mutate(
+        Distance = sqrt(rowSums(
+          (test %>% dplyr::select(names(selected_data)) - selected_data) ** 2)
+          )) %>%
+      dplyr::distinct(across(names(selected_data)), .keep_all = TRUE) %>%
       dplyr::arrange(Distance) %>%
       head(n = 0.2 * nrow(.)) %>%
       dplyr::pull(Iteration)
   }
   # We filter on the inputs of the data
-  inputs <- .data %>% dplyr::select(Iteration,.$inputs)
+  inputs <- .data %>%
+    dplyr::select(Iteration, .$inputs)
   #truth_table <- tibble::tibble(.rows=nrow(inputs))
   all_rules <- list()
   comb <- NULL
-  for (i in seq(1,maxLevel)) { # Create each level of rules
+  for (i in seq(1, max_level)) { # Create each level of rules
     if (i > 1) {
-      first_rules <- all_rules[[1]]$Rule[1:min(length(all_rules[[1]]),15)]
-      comb <- gtools::combinations(length(first_rules), i, first_rules, repeats.allowed = FALSE)
+      first_rules <- all_rules[[1]]$Rule[1:min(length(all_rules[[1]]), 15)]
+      comb <- gtools::combinations(length(first_rules),
+                                   i,
+                                   first_rules,
+                                   repeats.allowed = FALSE)
     }
-    truth_table <- create_truth_table(inputs, useEquality, comb)
-    all_rules[[i]] <- create_rules(truth_table, i, minSig, selectedData = selectedData)
+    truth_table <- create_truth_table(inputs, use_equality, comb)
+    all_rules[[i]] <- create_rules(truth_table,
+                                   i,
+                                   min_sig,
+                                   selected_data = selected_data)
   }
 
-  return(do.call(rbind, lapply(all_rules, head, 15)) %>% dplyr::arrange(desc(Ratio)))
+  return(do.call(rbind, lapply(all_rules, head, 15)) %>%
+           dplyr::arrange(dplyr::desc(Ratio)))
 }
 
-create_rules <- function(data, level, minSig, selectedData) {
+create_rules <- function(data, level, min_sig, selected_data) {
   # Create rules
   # Make sure to delete rules with equal values, keep the one with ==
-  tib <- tibble::tibble(Rule = data %>% dplyr::select(-Iteration) %>% colnames(),
-                        Sign = dplyr::if_else(grepl("==", Rule), "A", "B"), # Give priority to equal
+  tib <- tibble::tibble(Rule = data %>%
+                          dplyr::select(-Iteration) %>%
+                          colnames(),
+                        Sign = dplyr::if_else(grepl("==", Rule),
+                                              "A",
+                                              "B"), # Give priority to equal
                         Sel = data %>%
-                          dplyr::filter(Iteration %in% selectedData) %>%
-                          dplyr::select(-Iteration) %>% colSums(),
+                          dplyr::filter(Iteration %in% selected_data) %>%
+                          dplyr::select(-Iteration) %>%
+                          colSums(),
                         Unsel = data %>%
-                          dplyr::filter(!(Iteration %in% selectedData)) %>%
+                          dplyr::filter(!(Iteration %in% selected_data)) %>%
                           dplyr::select(-Iteration) %>% colSums(),
-                        Significance = Sel/length(selectedData),
-                        Unsignificance = Unsel/(nrow(data)-length(selectedData)),
-                        Ratio = dplyr::if_else(Significance >= minSig,
-                                               dplyr::if_else(is.infinite(Sel/Unsel), 0.0, Sel/Unsel), 0.0)) %>%
+                        Significance = Sel / length(selected_data),
+                        Unsignificance = Unsel / (nrow(data) - length(selected_data)),
+                        Ratio = dplyr::if_else(Significance >= min_sig,
+                                               dplyr::if_else(is.infinite(Sel / Unsel),
+                                                              0.0, Sel / Unsel),
+                                               0.0)) %>%
     dplyr::filter(Ratio > 0)
 
   if (level == 1) {
-    tib <- tib %>% dplyr::arrange(desc(Ratio), Sign) %>%
+    tib <- tib %>%
+      dplyr::arrange(desc(Ratio), Sign) %>%
       dplyr::select(-Sign) %>%
       dplyr::distinct(Significance, Ratio, .keep_all = TRUE)
   } else {
@@ -72,44 +104,49 @@ create_rules <- function(data, level, minSig, selectedData) {
   }
   # Keep only the most informative rule for each variable
   tib <- tib %>%
-    tidyr::separate(Rule, sep=" ", into = c("Var", "Sign", "Val"), remove=FALSE) %>%
+    tidyr::separate(Rule,
+                    sep = " ",
+                    into = c("Var", "Sign", "Val"),
+                    remove = FALSE) %>%
     dplyr::group_by(Var) %>%
-    dplyr::slice_max(order_by=Ratio, n = 1) %>%
+    dplyr::slice_max(order_by = Ratio, n = 1) %>%
     dplyr::ungroup() %>%
-    dplyr::arrange(desc(Ratio))
+    dplyr::arrange(dplyr::desc(Ratio))
 }
 
 #' @importFrom rlang :=
 #' @importFrom foreach %dopar%
-create_truth_table <- function(.data, useEquality, rules = NULL) {
+create_truth_table <- function(.data, use_equality, rules = NULL) {
   col_name <- .data$inputs
   if (is.null(rules)) {
     params <- c(" < ", " == ", " > ")
-    if (!useEquality){
+    if (!use_equality) {
       params <- c(" < ", " > ")
     }
-    rules <- unlist(lapply(col_name[1:length(col_name)], create_first_rules, .data, params))
+    rules <- unlist(lapply(col_name[seq_along(col_name)], create_first_rules, .data, params))
   } else {
-    rules <- apply(rules[seq(1,nrow(rules)),], 1, function(x) { paste0(x, collapse=" & ")})
+    rules <- apply(rules[seq_len(nrow(rules)), ], 1, \(x) { paste0(x, collapse = " & ")})
   }
 
-  doParallel::registerDoParallel(parallel::detectCores()-2)
-  #newdata <- tibble::new_tibble(nrow=nrow(.data))
-  newdata <- foreach::foreach(rule = 1:length(rules), .combine=cbind) %dopar% {
-    .data %>% dplyr::mutate(!!(rules[rule]) := dplyr::if_else(eval(rlang::parse_expr(as.character(rules[rule]))),1,0), .keep="none")
+  doParallel::registerDoParallel(parallel::detectCores() - 2)
+
+  newdata <- foreach::foreach(rule = seq_along(rules), .combine = cbind) %dopar% {
+    .data %>%
+      dplyr::mutate(
+        !!(rules[rule]) := dplyr::if_else(
+          eval(rlang::parse_expr(as.character(rules[rule]))), 1, 0),
+        .keep="none")
   }
 
-  #for (rule in rules) {
-  #  .data <- .data %>% dplyr::mutate(!!(rule) := dplyr::if_else(eval(rlang::parse_expr(as.character(rule))),1,0))
-  #}
   doParallel::stopImplicitCluster()
-  #.data <- cbind(.data, newdata)
 
   .data %>% dplyr::select(Iteration) %>% cbind(newdata)
 }
 
 create_first_rules <- function(col_name, data, params) {
-  col_rule <- paste0(col_name, sapply(sort(unique(ceiling(data[[col_name]]*1000)/1000)), function(x) paste0(params, x)))
+  col_rule <- paste0(col_name,
+                     sapply(sort(unique(ceiling(data[[col_name]] * 1000) / 1000)),
+                            \(x) paste0(params, x)))
   col_rule <- col_rule[2:length(col_rule)] # Remove first
-  col_rule[1:length(col_rule)-1] # Remove last element
+  col_rule[seq_along(col_rule) - 1] # Remove last element
 }
