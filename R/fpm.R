@@ -11,10 +11,15 @@
 #'
 #' @param .data Data input, obtained using [SCORER::loaddataset()]
 #' @param selectedData The selected solutions, either a vector of iterations or a named list of objectives and their values
+#' @param unselectedData The non-selected solutions, when NULL, automatically uses the remaining solutions not in selectedData
+#' @param maxLevel The level of rules to obtain, i.e. compound rule level, defaults to 1
+#' @param minSig Minimum significance of rule to be considered valuable
+#' @param useEquality Find rules which are exactly equal to their value
+#' @param onlyMostSignificant Only the most significant rules are considered, not implemented
 #'
-#' @return A list of lists where each combination of itemsets are considered
+#' @return A data frame containing the rules with its significance, unsignificance, and ratio.
 #' @export
-fpm <- function(.data, maxLevel = 1, minSig = 0.5, selectedData, unselectedData=NULL, useEquality = TRUE, onlyMostSignificant = TRUE) {
+fpm <- function(.data, selectedData, unselectedData=NULL, maxLevel = 1, minSig = 0.5, useEquality = TRUE, onlyMostSignificant = TRUE) {
   # Determine if selectedData is just iterations or a reference point
   if (!is.numeric(selectedData)) {
     # If the provided data is a reference point, utilize the k-nearest solutions.
@@ -44,6 +49,7 @@ fpm <- function(.data, maxLevel = 1, minSig = 0.5, selectedData, unselectedData=
   return(do.call(rbind, lapply(all_rules, head, 15)) %>% dplyr::arrange(desc(Ratio)))
 }
 
+# Create the rules
 create_rules <- function(data, level, minSig, selectedData) {
   # Create rules
   # Make sure to delete rules with equal values, keep the one with ==
@@ -79,6 +85,7 @@ create_rules <- function(data, level, minSig, selectedData) {
     dplyr::arrange(desc(Ratio))
 }
 
+# Creating the truth table for this rule level
 #' @importFrom rlang :=
 #' @importFrom foreach %dopar%
 create_truth_table <- function(.data, useEquality, rules = NULL) {
@@ -93,21 +100,20 @@ create_truth_table <- function(.data, useEquality, rules = NULL) {
     rules <- apply(rules[seq(1,nrow(rules)),], 1, function(x) { paste0(x, collapse=" & ")})
   }
 
-  doParallel::registerDoParallel(parallel::detectCores()-2)
-  #newdata <- tibble::new_tibble(nrow=nrow(.data))
+  cl <- parallel::makeCluster(parallel::detectCores(TRUE)-1)
+  doParallel::registerDoParallel(cl)
+
   newdata <- foreach::foreach(rule = 1:length(rules), .combine=cbind, .packages=c("dplyr")) %dopar% {
     .data %>% dplyr::mutate(!!(rules[rule]) := dplyr::if_else(eval(rlang::parse_expr(as.character(rules[rule]))),1,0), .keep="none")
   }
 
-  #for (rule in rules) {
-  #  .data <- .data %>% dplyr::mutate(!!(rule) := dplyr::if_else(eval(rlang::parse_expr(as.character(rule))),1,0))
-  #}
   doParallel::stopImplicitCluster()
-  #.data <- cbind(.data, newdata)
+  parallel::stopCluster(cl)
 
   .data %>% dplyr::select(Iteration) %>% cbind(newdata)
 }
 
+# The initially created rules
 create_first_rules <- function(col_name, data, params) {
   col_rule <- paste0(col_name, sapply(sort(unique(ceiling(data[[col_name]]*1000)/1000)), function(x) paste0(params, x)))
   col_rule <- col_rule[2:length(col_rule)] # Remove first

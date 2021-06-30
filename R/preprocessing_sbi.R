@@ -2,6 +2,7 @@
 #   Find the minimum RSME to a Pareto-optimal solution
 #     Pareto-optimal solutions have Rank 1, placed in Y
 #' @importFrom foreach %dopar%
+#' @export
 addDistances <- function(.data, paretoSolutions = NULL, parallelCores = 6) {
   objectives = attr(.data, "objectives")[.data$objectives %in% names(.data)]
   limits <- sapply(.data[,names(objectives)], function(x) {c(min(x), max(x))})

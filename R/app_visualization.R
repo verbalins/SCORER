@@ -31,6 +31,7 @@ mod_visualization_ui <- function(id) {
 mod_visualization_server <- function(id, r) {
   shiny::moduleServer(id,
     function(input, output, session) {
+      ns <- session$ns
 
       dim_list <- shiny::reactive({
         list(Objectives=unique(r$filtered_data$objectives),
@@ -88,8 +89,8 @@ mod_visualization_server <- function(id, r) {
                           line=list(color = stats::formula(paste0("~",shiny::isolate(input$color)))),
                           source = "pcoords",
                           data = r$filtered_data) %>%
-            plotly::event_register(event="plotly_restyle") %>%
-            plotly::toWebGL()
+            plotly::event_register(event="plotly_restyle") #%>%
+            #plotly::toWebGL()
         )
       })
 
@@ -237,7 +238,7 @@ mod_visualization_server <- function(id, r) {
                              input$color,
                              r$df_selected()$unsel,
                              source = plotname) %>%
-                plotly::toWebGL() %>%
+                #plotly::toWebGL() %>%
                 plotly::hide_colorbar() %>%
                 plotly::event_register("plotly_doubleclick")
             })
