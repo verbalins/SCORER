@@ -4,20 +4,20 @@
 \alias{optresult}
 \title{Title}
 \usage{
-optresult(data, opt_name, id = 1, objectives, inputs, outputs)
+optresult(data, opt_name, opt_id = 1, objectives, inputs, outputs, parameters)
 }
 \arguments{
 \item{data}{A tibble containing optimization results from OptimizeBrowser}
 
 \item{opt_name}{A name for the optimization run}
 
-\item{id}{id number of the optimization}
-
 \item{objectives}{A named character vector}
 
 \item{inputs}{A character vector with names of the inputs}
 
 \item{outputs}{A character vector with names of the outputs}
+
+\item{id}{id number of the optimization}
 }
 \value{
 An S3 class

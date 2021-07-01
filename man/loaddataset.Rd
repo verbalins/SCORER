@@ -2,16 +2,30 @@
 % Please edit documentation in R/load.R
 \name{loaddataset}
 \alias{loaddataset}
-\title{Loads optimization data and returns an OptResult class.}
+\title{Load optimization data}
 \usage{
-loaddataset(filename, objectives, outputs, custom_outputs)
+loaddataset(
+  filename,
+  objectives = NULL,
+  inputs = NULL,
+  outputs = NULL,
+  custom_outputs = NULL
+)
 }
 \arguments{
-\item{file}{A file containing optimization data}
+\item{filename}{A csv file containing formatted optimization data from Opt}
+
+\item{objectives}{A character vector naming the objectives}
+
+\item{inputs}{A character vector naming the inputs}
+
+\item{outputs}{A character vector naming the ouputs}
+
+\item{custom_outputs}{A character vector describing custom outputs}
 }
 \value{
 A dataframe with the data
 }
 \description{
-Loads optimization data and returns an OptResult class.
+Load optimization data
 }

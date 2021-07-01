@@ -1,7 +1,7 @@
 Package: SCORER
 Version: 0.0.0.9000
-Date: 2020-12-18
-Title: What the Package Does (Title Case)
+Date: 2021-06-30
+Title: Reproducible Knowledge Extraction And Visualization Of Multi-Objective Optimization Data
 Authors@R: 
     person(given = "Simon",
            family = "Lidberg",
@@ -17,25 +17,34 @@ Encoding: UTF-8
 LazyData: true
 URL: https://github.com/verbalins/SCORER
 BugReports: https://github.com/verbalins/SCORER/issues
-Depends: R (>= 2.10)
+Depends: R (>= 4.10)
 Imports:
     readr,
     tidyr,
-    ggplot2,
     dplyr,
+    tibble,
+    ggplot2,
     BBmisc,
     ecr,
     plotly,
     stringr,
     ggtext,
     tikzDevice,
-    stats,
-    tibble,
     scales,
-    NbClust,
     shiny,
-    shinydashboard
+    shinydashboard,
+    shinycssloaders,
+    shinyjs,
+    collapse,
+    DT,
+    fastcluster,
+    foreach,
+    doParallel,
+    dbscan,
+    factoextra,
+    Rdpack
 RoxygenNote: 7.1.1
 Roxygen: list(markdown = TRUE)
+RdMacros: Rdpack
 Suggests: 
     testthat (>= 3.0.0)

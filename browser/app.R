@@ -23,8 +23,9 @@
 # Views:
 #   Clustering
 #       Prepare the data
-#           Filter?
+#           Filter
 #       Specify the parameters to cluster by
+#       Choose the clustering method
 #       Choose the number of clusters by evaluating a few metrics
 #       Apply the clustering to the dataset
 #   Visualization
@@ -36,276 +37,95 @@
 #   Dataset with clusters applied.
 #       TODO: Set on this screen or another?
 #
+seed <- 42
+set.seed(seed)
+options(shiny.maxRequestSize = 30 * 1024 ^ 2) # 30MB
+#options(shiny.error = browser)
+options(shiny.reactlog = TRUE)
+options(display.mode = "showcase")
 
-set.seed(42)
-#df <- FSMJ_clusters %>% normalizeValues(attr(., "objectives")) %>% dplyr::select(c(attr(., "inputs"),names(attr(.,"objectives")),Cluster,Distance,Rank))
-df <- FSMJ_clusters %>%
-    dplyr::select(c(attr(., "inputs"),names(attr(.,"objectives")),Cluster,Distance,Rank))
-df_original <- df
-d <- attr(df, "objectives")
+debug <- FALSE
 
-# UI for the import tab
-# Handles:
-# - Data import
-# - Data filtering
-loadfilterUI <- shiny::fillPage(
-    shiny::fluidRow(
-        shiny::column(width = 6,
-            # Data selection and import
-            shinydashboard::box(title="Loading data", width = NULL,
-                h4("Current dataset:", shiny::textOutput("data_name")),
-                shiny::fileInput("fileupload", "Choose CSV File",
-                          multiple = FALSE,
-                          accept = c("text/csv",
-                                     "text/comma-separated-values,text/plain",
-                                     ".csv"))
-            ),
-            # Data filtering, specific filters for certain values, initial screening
-            shinydashboard::box(title="Data summary", width = NULL,
-                                DT::dataTableOutput("datatable"),
-                                shiny::actionButton("applyfilter","Apply Filter")
-            )
-        ),
-        shiny::column(width=6,
-            shinydashboard::box(title="Filters", width = NULL,
-                                shiny::selectInput("filters", "Filter", names(attr(df, "objectives"))),
-                                uiOutput("filterslider")
-            )
-        )
-    )
-)
-# UI for the cluster tab
-# Handles:
-# - Cluster identification and application
-clusterUI <- shiny::fillPage(
-    # Choose the clustering dimensions
-
-    # Start clustering, apply results to dataset
-
-    # Cluster performance (Visualization is handled in next tab)
-
-)
-
-# UI for the visualization tab
-visualizationUI <- shiny::fillPage(
-    #tags$style(type = "text/css", "#parcoords {height: calc(100vh - 80px) !important;}"),
-    plotly::plotlyOutput("parcoords"),
-    shiny::tabsetPanel(type = "tabs",
-                        tabPanel("3D",
-                        shiny::fluidRow(
-                            shiny::column(10,
-                                         tags$style(type = "text/css", "#scatter3d {height: calc(100vh - 80px) !important;}"),
-                                         plotly::plotlyOutput("scatter3d", height = "100%", width = "100%")),
-                            shiny::column(2,
-                                         shiny::inputPanel(shiny::selectInput("x", "X:", unique(names(d)), selectize = FALSE, selected=names(d)[[1]])),
-                                         shiny::inputPanel(shiny::selectInput("y", "Y:", unique(names(d)), selectize = FALSE, selected=names(d)[[2]])),
-                                         shiny::inputPanel(shiny::selectInput("z", "Z:", unique(names(d)), selectize = FALSE, selected=names(d)[[3]])),
-                                         shiny::inputPanel(shiny::selectInput("color", "Color:", c("Cluster","Rank","Distance"), selectize = FALSE, selected="Cluster")))
-                        )),
-                       tabPanel("2D", lapply(names(d)[-1], function(nm) plotly::plotlyOutput(nm, width = "33%", inline = TRUE, height = "100%")))
-                       )
-    #shiny::actionButton("reset", "Reset")
-)
-
-ruleUI <- shiny::fillPage(
-
-)
-
+# Sidebar UI
 sidebar <- shinydashboard::dashboardSidebar(
-    shinydashboard::sidebarMenu(
-        shinydashboard::menuItem("Import Data", tabName = "load", icon = shiny::icon("table", lib="font-awesome")),
-        shinydashboard::menuItem("Clustering", tabName = "cluster", icon = shiny::icon("microscope", lib="font-awesome")),
-        shinydashboard::menuItem("Visualization", tabName = "viz", icon = shiny::icon("chart-bar", lib="font-awesome")),
-        shinydashboard::menuItem("Rule Extraction", tabName = "rule", icon = shiny::icon("sitemap", lib="font-awesome"))
+    shinydashboard::sidebarMenu(id = "tabs",
+        shinydashboard::menuItem("Import Data",
+                                 tabName = "import",
+                                 icon = shiny::icon("table")),
+        shinydashboard::menuItem("Filter Data",
+                                 tabName = "filter",
+                                 icon = shiny::icon("filter")),
+        shinydashboard::menuItem("Clustering",
+                                 tabName = "cluster",
+                                 icon = shiny::icon("microscope")),
+        shinydashboard::menuItem("Visualization",
+                                 tabName = "viz",
+                                 icon = shiny::icon("chart-bar")),
+        shinydashboard::menuItem("Rule Extraction",
+                                 tabName = "rule",
+                                 icon = shiny::icon("sitemap")),
+        shinydashboard::menuItem("Export Data",
+                                 tabName = "export",
+                                 icon = shiny::icon("file-export"))
     )
 )
 
+# Body UI
 body <- shinydashboard::dashboardBody(
     shinydashboard::tabItems(
-        shinydashboard::tabItem(tabName = "load", loadfilterUI),
-        shinydashboard::tabItem(tabName = "cluster", clusterUI),
-        shinydashboard::tabItem(tabName = "viz", visualizationUI),
-        shinydashboard::tabItem(tabName = "rule",ruleUI)
+        shinydashboard::tabItem(tabName = "import",
+                                mod_import_ui("import")),
+        shinydashboard::tabItem(tabName = "filter",
+                                mod_filter_ui("filter")),
+        shinydashboard::tabItem(tabName = "cluster",
+                                mod_cluster_ui("cluster")),
+        shinydashboard::tabItem(tabName = "viz",
+                                mod_visualization_ui("visualization")),
+        shinydashboard::tabItem(tabName = "rule",
+                                mod_rule_ui("rule")),
+        shinydashboard::tabItem(tabName = "export",
+                                mod_export_ui("export"))
     )
 )
 
 dash <- shinydashboard::dashboardPage(
-    shinydashboard::dashboardHeader(title = "RulextR"),
+    shinydashboard::dashboardHeader(title = "RulExtR"),
     sidebar,
     body
 )
 
 # Define server logic
 server <- function(input, output, session) {
-    df_imported <- shiny::reactive({
-        input$applyfilter
-        df[input$datatable_rows_all,]
-    })
-    ### Data input logic
-    output$data_name <- shiny::renderText({ attr(df, "opt_name") })
-    output$datatable <- DT::renderDataTable({
-        table <- df
-        if (is.null(table))
-            return(NULL)
+    # reactiveValues used to hold the data in the app,
+    #  communication between modules.
+    # TODO: Default values set, change for prod
+    r <- shiny::reactiveValues(data = SCORER::FMC,
+                               filtered_data = SCORER::FMC,
+                               randomseed = seed)
 
-        DT::datatable(table, filter="top", options = list(scrollX = TRUE))
-    })
-    output$filterslider <- renderUI({
-        minVal <- min(df[,input$filters])
-        maxVal <- max(df[,input$filters])
-        shiny::sliderInput("filterslider", "", minVal, max=maxVal,value=c(minVal, maxVal))
-    })
+    ### Data import logic --------------------------------------------
+    mod_import_server("import", r)
+    # Reset filters on Visualization tab when current_data changes
+    # shiny::observe({
+    #     current_data
+    #     ranges$data <- NULL
+    #     selected_points$data <- NULL
+    # })
 
-    shiny::observeEvent(input$applyfilter, {
+    ### Data filter logic --------------------------------------------
+    mod_filter_server("filter", r)
 
-    })
+    ### Cluster logic ------------------------------------------------
+    mod_cluster_server("cluster", r)
 
-    ### Visualization logic
-    # Render the parallel coordinates plot
-    output$parcoords <- plotly::renderPlotly({
-            plotly::plot_ly(type = 'parcoords',
-                            dimensions = create_dimensions_list(df),
-                            line=list(color = ~Cluster),
-                            source = "pcoords",
-                            data = df_imported()) %>%
-            plotly::event_register(event="plotly_restyle") %>%
-            plotly::toWebGL()
-    })
+    ### Visualization logic ------------------------------------------
+    mod_visualization_server("visualization", r)
 
-    # React to changes to the colouring variable
-    shiny::observeEvent(input$color, {
-        plotly::plotlyProxy("scatter3d", session) %>%
-        plotly::plotlyProxyInvoke("restyle", list(color = stats::formula(paste("~",input$color))))
-    })
+    ### Rule logic ---------------------------------------------------
+    mod_rule_server("rule", r)
 
-    # Render the scatter3d plot
-    output$scatter3d <- plotly::renderPlotly({
-            plotly::plot_ly(type="scatter3d",
-                            x = stats::formula(paste("~",input$x)),
-                            y = stats::formula(paste("~",input$y)),
-                            z = stats::formula(paste("~",input$z)),
-                            color = stats::formula(paste("~",input$color)),
-                            #color = ~Cluster,
-                            mode="markers",
-                            size=4,
-                            opacity=0.7,
-                            height=650,
-                            data = df_selected()) %>%
-            #plotly::hide_colorbar() %>%
-            plotly::toWebGL()
-    })
-
-    # maintain a collection of selection ranges
-    # since each parcoord dimension is allowed to have multiple
-    # selected ranges, this reactive values data structure is
-    # allowed
-    # list(
-    #  var1 = list(c(min1, max1), c(min2, max2), ...),
-    #  var2 = list(c(min1, max1)),
-    #  ...
-    # )
-    ranges <- shiny::reactiveValues('data' = list())
-    shiny::observeEvent(plotly::event_data("plotly_restyle", source = "pcoords"), {
-        d <- plotly::event_data("plotly_restyle", source = "pcoords")
-        if (names(d[[1]]) == "dimensions"){
-            # Reordering dimensions
-            return()
-        }
-        # what is the relevant dimension (i.e. variable)?
-        dimension <- as.numeric(stringr::str_extract(names(d[[1]]), "[0-9]+"))
-        # careful of the indexing in JS (0) versus R (1)!
-        dimension_name <- names(df)[[dimension + 1]]
-        # a given dimension can have multiple selected ranges
-        # these will come in as 3D arrays, but a list of vectors
-        # is nicer to work with
-        info <- d[[1]][[1]]
-        if (!is.null(info) && all(info < 0)) {
-            info <- NULL
-        }
-        ranges$data[[dimension_name]] <- if (length(dim(info)) == 3) {
-            lapply(seq_len(dim(info)[2]), function(i) info[,i,])
-        } else {
-            list(as.numeric(info))
-        }
-        brush_ranges$data <- NULL
-    })
-
-    # filter the dataset down to the rows that match the selection ranges
-    df_selected <- shiny::reactive({
-        keep <- TRUE
-        for (i in names(ranges$data)) {
-            range_ <- ranges$data[[i]]
-            keep_var <- FALSE
-            for (j in seq_along(range_)) {
-                rng <- range_[[j]]
-                if (length(rng) == 0) # When deselecting
-                    keep_var <- TRUE
-                else {
-                    keep_var <- keep_var | dplyr::between(df_imported()[[i]], min(rng), max(rng))
-                }
-            }
-            keep <- keep & keep_var
-        }
-        for (i in names(brush_ranges$data)) {
-            range_ <- brush_ranges$data[[i]]
-            keep_var <- FALSE
-            if (is.null(range_)) # When deselecting
-                keep_var <- TRUE
-            else {
-                keep_var <- keep_var | dplyr::between(df_imported()[[names(d)[[1]]]], min(range_$x), max(range_$x))
-                keep_var <- keep_var & dplyr::between(df_imported()[[i]], min(range_$y), max(range_$y))
-            }
-            keep <- keep & keep_var
-        }
-        df_imported()[keep, ]
-    })
-
-    # These reactive values track the set of active brushes
-    # Each reactive value corresponds to a different variable
-    brush_ranges <- shiny::reactiveValues('data' = list())
-
-    lapply(names(d)[-1], function(nm) {
-        output[[nm]] <- plotly::renderPlotly({
-            plotly::plot_ly(type="scatter",
-                            x = stats::formula(paste("~",names(d)[[1]])),
-                            y = stats::formula(paste("~",nm)),
-                            #customdata = seq(1, nrow(df)),
-                            color = stats::formula(paste("~",input$color)),
-                            mode = "markers",
-                            size = 4,
-                            opacity = 0.7,
-                            data = df_selected(),
-                            source = nm) %>%
-                plotly::layout(
-                    clickmode = "event+select",
-                    dragmode = "select") %>%
-                plotly::hide_colorbar() %>%
-                plotly::event_register(event="plotly_brushed") %>%
-                plotly::event_register("plotly_doubleclick") %>%
-                plotly::toWebGL()
-        })
-
-        # when the selection is cleared, return the selection layer bars to 0
-        shiny::observeEvent(input$reset, {
-            brush_ranges$data <- NULL
-            # plotly::plotlyProxy(nm, session) %>%
-            #     plotly::plotlyProxyInvoke("restyle", "data", df_selected())
-        })
-
-        shiny::observeEvent(plotly::event_data("plotly_doubleclick", source = nm), {
-            brush_ranges$data <- NULL
-        })
-
-        shiny::observeEvent(plotly::event_data("plotly_brushed", source = nm), {
-            # inform the world about the new brush range
-            brushed <- plotly::event_data("plotly_brushed", source = nm)
-            if (is.null(brushed)){
-                brush_ranges$data <- NULL
-            } else {
-                brush_ranges$data[[nm]] <- brushed
-            }
-        })
-    })
+    ### Data export logic --------------------------------------------
+    mod_export_server("export", r)
 }
 
 # Run the application
