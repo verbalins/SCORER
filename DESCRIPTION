@@ -10,14 +10,17 @@ Authors@R:
            comment = c(ORCID = "0000-0003-1215-152X"))
 Author: Simon Lidberg [aut, cre]
 Maintainer: Simon Lidberg <simon.lidberg@gmail.com>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
+Description: This package provides methods for analyzing multi-objective optimization data.
+    First, methods are provided to analyze optimization data obtained through bottleneck identification by the SCORE
+    method. Secondly, an interactive Shiny application is available to perform knowledge-driven optimization on
+    multi-objective optimization data. The goal of the Shiny application is to provide a reproducible analysis
+    based on filtering, clustering, visualization, rule extraction and export. 
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 URL: https://github.com/verbalins/SCORER
 BugReports: https://github.com/verbalins/SCORER/issues
-Depends: R (>= 4.10)
+Depends: R (>= 4.1.0)
 Imports:
     readr,
     tidyr,
