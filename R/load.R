@@ -8,8 +8,10 @@
 #' @param custom_outputs A character vector describing custom outputs
 #'
 #' @return A dataframe with the data
-loaddataset <- function(filename, objectives=NULL, inputs=NULL,
-                        outputs=NULL, custom_outputs=NULL) {
+loaddataset <- function(filename,
+                        objectives = NULL,
+                        inputs = NULL,
+                        outputs = NULL, custom_outputs = NULL) {
 
   opt_info <- readr::read_lines(filename, skip_empty_rows = T) %>%
     stringr::str_replace_all("[\r\n]", "") %>%
@@ -18,9 +20,10 @@ loaddataset <- function(filename, objectives=NULL, inputs=NULL,
   cust_locale <- readr::locale(decimal_mark = ".")
 
   opt <- opt_info %>%
-    utils::head(.,-4) %>%
-    readr::read_delim(delim=";",trim_ws = TRUE, locale = cust_locale) %>%
-    dplyr::select(-dplyr::any_of(c("Replications", "Error", "ConstraintViolation")), maxOut = dplyr::starts_with("maxTP")) %>%
+    utils::head(., -4) %>%
+    readr::read_delim(delim = ";",trim_ws = TRUE, locale = cust_locale) %>%
+    dplyr::select(-dplyr::any_of(c("Replications", "Error", "ConstraintViolation")),
+                  maxOut = dplyr::starts_with("maxTP")) %>%
     dplyr::select(where(function(x){!all(is.na(x))}))
 
   # TODO: Evaluate if parameters are at the bottom.
@@ -35,14 +38,11 @@ loaddataset <- function(filename, objectives=NULL, inputs=NULL,
     dplyr::pull(2)
 
   opt_parameters <- opt_info %>%
-    readr::read_delim(delim=";", skip = 1, n_max = 1, col_names = FALSE,trim_ws = T, locale = cust_locale) %>%
-    #dplyr::select(!!-1, -((length(.)-1):length(.))) %>%
+    readr::read_delim(delim = ";", skip = 1, n_max = 1, col_names = FALSE,
+                      trim_ws = T, locale = cust_locale) %>%
     dplyr::select(!!-1) %>%
     dplyr::slice() %>%
     unlist(., use.names = FALSE)
-
-  #opt_textoutput <- opt_info %>%
-  #  readr::read_csv2(skip = 3, n_max = 1, col_names = FALSE)
 
   opt_objectives <- opt_info %>%
     readr::read_delim(delim = ";", skip = 3, n_max = 1, col_names = FALSE,
@@ -72,7 +72,9 @@ loaddataset <- function(filename, objectives=NULL, inputs=NULL,
 
   # Add Iteration if it doesn't exist, set Iteration in loaded order
   if (!("Iteration" %in% colnames(opt))) {
-    opt <- opt %>% dplyr::mutate(Iteration = seq(1,nrow(.)), .before=names(opt_objectives)[1])
+    opt <- opt %>%
+      dplyr::mutate(Iteration = seq(1,nrow(.)),
+                    .before=names(opt_objectives)[1])
   }
 
   # Add Rank if it doesn't exist, for all objectives

@@ -8,8 +8,8 @@
 #      ylab="Within groups sum of squares")
 
 workspace <- function() {
-  df <- FSMJ %>% addDistances(parallelCores = 10)
-  df <- df %>% partitioning(parameters = c("Distance",names(attr(.,"objectives"))))
+  df <- FSMJ %>% add_distances(parallel_cores = 10)
+  df <- df %>% partitioning(parameters = c("Distance",names(attr(., "objectives"))))
   #t %>% head(1000) %>% NbClust::NbClust(data = ., diss = NULL, distance = "euclidean",
   #                                      min.nc = 2, max.nc = 15, method = "kmeans")
 
@@ -19,15 +19,16 @@ workspace <- function() {
                   #symbol = ~Cluster,
                   #color = ~minWaitingParts,
                   color = ~Cluster,
-                  data=df,
-                  type="scatter3d",
-                  mode="markers",
-                  size=4,
-                  opacity=0.7)
+                  data = df,
+                  type = "scatter3d",
+                  mode = "markers",
+                  size = 4,
+                  opacity = 0.7)
 
   df %>%
-    head(1000)%>% dplyr::select(Distance,Cluster,c(attr(., "inputs"),names(attr(.,"objectives")))) %>%
-    plotly::plot_ly(type = 'parcoords',line = list(color = ~Cluster),
+    head(1000) %>%
+    dplyr::select(Distance, Cluster, c(attr(., "inputs"), names(attr(., "objectives")))) %>%
+    plotly::plot_ly(type = "parcoords", line = list(color = ~Cluster),
                     dimensions = create_dimensions_list(.))
 }
 
@@ -53,7 +54,7 @@ tidy_clust <- function(.dat, nrClusters = 10) {
     ggplot2::facet_wrap(~ k)
 }
 
-partitioning <- function(.data, nrClusters = 5, parameters = c(names(attr(.data,"objectives")))) {
+partitioning <- function(.data, nrClusters = 5, parameters = c(names(attr(.data, "objectives")))) {
   t <- .data %>% dplyr::select(parameters)
 
   # TODO: Help with determining cluster size

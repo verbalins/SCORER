@@ -99,17 +99,18 @@ mod_import_server <- function(id, r) {
             dplyr::select("Iteration", dplyr::all_of(sel), "Rank")
 
           if (input$distancemetric) {
-            r$data <- r$data %>% add_distances(parallelCores = 10)
+            r$data <- r$data %>% add_distances(parallel_cores = 10)
           }
 
-          if(!is.null(input$data_inputs)) {
-            r$data$inputs <- input$data_inputs }
+          if (!is.null(input$data_inputs)) {
+            r$data$inputs <- input$data_inputs
+          }
 
-          if(!is.null(input$data_objectives)) {
+          if (!is.null(input$data_objectives)) {
             attr(r$data, "objectives") <- attr(r$data, "objectives")[input$data_objectives]
           }
 
-          if(!is.null(input$data_outputs)) {
+          if (!is.null(input$data_outputs)) {
             r$data$outputs <- input$data_outputs
           } else {
             r$data$outputs <- r$data$parameters[!(r$data$parameters %in% c(r$data$inputs,r$data$objectives))]

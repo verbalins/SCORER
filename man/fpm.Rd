@@ -6,20 +6,41 @@
 \usage{
 fpm(
   .data,
-  maxLevel = 1,
-  minSig = 0.5,
-  selectedData,
-  unselectedData = NULL,
-  useEquality = TRUE,
-  onlyMostSignificant = TRUE
+  max_level = 1,
+  min_sig = 0.5,
+  selected_data,
+  unselected_data = NULL,
+  use_equality = TRUE,
+  only_most_significant = TRUE
 )
 }
 \arguments{
 \item{.data}{Data input, obtained using \code{\link[=loaddataset]{loaddataset()}}}
+
+\item{max_level}{The maximum level of rules to be returned, default 1}
+
+\item{min_sig}{Minimum significance a rule will have to meet to be included}
+
+\item{selected_data}{The selected solutions, either a vector of iterations or a named list of objectives and their values}
+
+\item{unselected_data}{The rest of the solutions not in \link{selected_data}}
+
+\item{use_equality}{Include rules such as x == 1?}
+
+\item{only_most_significant}{Only return the most significant rules?}
 }
 \value{
 A list of lists where each combination of itemsets are considered
 }
 \description{
-Flexible pattern mining in R(), returns rules to reach certain areas in the objectives space
+\code{fpm()} returns rules in the decision space to reach certain areas in the
+objectives space.
+}
+\details{
+Flexible pattern mining \insertCite{Bandaru2017b}{SCORER} implemented in R().
+}
+\references{
+{
+\insertAllCited{}
+}
 }

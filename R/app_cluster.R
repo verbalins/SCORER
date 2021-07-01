@@ -4,9 +4,10 @@
 # Start clustering, accept results to dataset
 #   Apply with new or same button as previous?
 # Cluster performance (Visualization is handled in next tab)
-#   Performance can be shown so the user can get some guidance on the number of clusters
+#   Performance can be shown so the user can get some guidance on the
+#   number of clusters
 mod_cluster_ui <- function(id) {
-  ns <- NS(id)
+  ns <- shiny::NS(id)
   shiny::tagList(shiny::fillPage(
     # Choose the clustering dimensions
     #   Selectinput
@@ -29,8 +30,8 @@ mod_cluster_ui <- function(id) {
         title = "Cluster Variables",
         shiny::uiOutput(ns("cluster_dep")),
         shiny::uiOutput(ns("cluster_in_dep")),
-        shiny::actionButton(ns("addInputs"), "Add all inputs"),
-        shiny::actionButton(ns("resetButton"), "Reset values"),
+        shiny::actionButton(ns("add_inputs"), "Add all inputs"),
+        shiny::actionButton(ns("reset_button"), "Reset values"),
         shiny::checkboxInput(ns("scale_dep"), "Scale Dependents", TRUE)
       ),
       shinydashboard::box(
@@ -118,16 +119,20 @@ mod_cluster_server <- function(id, r) {
       list("Objectives" = as.list(unique(r$filtered_data$objectives)),
            "Inputs" = as.list(unique(r$filtered_data$inputs)),
            "Outputs" = as.list(unique(r$filtered_data$outputs)),
-           "Filter" = as.list(unique(grep("Rank|Distance|Cluster",colnames(r$filtered_data),value = TRUE))))
+           "Filter" = as.list(unique(grep("Rank|Distance|Cluster",
+                                          colnames(r$filtered_data),
+                                          value = TRUE))))
     })
 
-    shiny::observeEvent(input$addInputs, {
-      shiny::updateSelectInput(session, "clusterInDep", choices=dim_list(), selected=dim_list()$Inputs)
+    shiny::observeEvent(input$add_inputs, {
+      shiny::updateSelectInput(session, "cluster_in_dep",
+                               choices = dim_list(),
+                               selected = dim_list()$Inputs)
     })
 
-    shiny::observeEvent(input$resetButton, {
-      shiny::updateSelectInput(session, "clusterDep", choices=dim_list())
-      shiny::updateSelectInput(session, "clusterInDep", choices=dim_list())
+    shiny::observeEvent(input$reset_button, {
+      shiny::updateSelectInput(session, "cluster_dep", choices = dim_list())
+      shiny::updateSelectInput(session, "cluster_in_dep", choices = dim_list())
     })
 
     shiny::observeEvent(r$filepath, {
@@ -150,12 +155,16 @@ mod_cluster_server <- function(id, r) {
     })
 
     shiny::observeEvent(input$eval_clus_perf, {
+      browser()
       # Ask to scale data
-      cluster_data$data <- r$filtered_data %>% 
-	dplyr::select(input$cluster_dep, input$cluster_in_dep)
+      cluster_data$data <- r$filtered_data %>%
+        dplyr::select(input$cluster_dep, input$cluster_in_dep)
+
       if (input$scale_dep) {
         cluster_data$data <- cluster_data$data %>%
-          dplyr::mutate(dplyr::across(input$cluster_dep, scales::rescale, to =c(0,1)))
+          dplyr::mutate(dplyr::across(input$cluster_dep,
+                                      scales::rescale,
+                                      to = c(0, 1)))
       }
 
       if (input$clustTab == "dbscan") {
@@ -166,8 +175,10 @@ mod_cluster_server <- function(id, r) {
     })
 
     shiny::observeEvent(input$dbmethod, {
-      shinyjs::toggleState(ns("eps"), condition = !(input$dbmethod == "HDBSCAN"))
-      shinyjs::toggleState(ns("eval_clus_perf"), condition = !(input$dbmethod == "HDBSCAN"))
+      shinyjs::toggleState(ns("eps"),
+                           condition = !(input$dbmethod == "HDBSCAN"))
+      shinyjs::toggleState(ns("eval_clus_perf"),
+                           condition = !(input$dbmethod == "HDBSCAN"))
     })
 
     shiny::observeEvent(input$evalClusters, {
@@ -175,30 +186,34 @@ mod_cluster_server <- function(id, r) {
       # Evaluate the number of clusters to use.
       # Ask to scale data
       if (is.null(input$cluster_in_dep)) {
-        cluster_data$data <- r$filtered_data %>% dplyr::select(input$cluster_dep, r$data$inputs)
+        cluster_data$data <- r$filtered_data %>%
+          dplyr::select(input$cluster_dep, r$data$inputs)
       } else {
-        cluster_data$data <- r$filtered_data %>% dplyr::select(input$cluster_dep, input$cluster_in_dep)
+        cluster_data$data <- r$filtered_data %>%
+          dplyr::select(input$cluster_dep, input$cluster_in_dep)
       }
 
-      if (input$scaleDep) {
+      if (input$scale_dep) {
         cluster_data$data <- cluster_data$data %>%
-          dplyr::mutate(dplyr::across(input$cluster_dep, scales::rescale, to =c(0,1)))
+          dplyr::mutate(dplyr::across(input$cluster_dep,
+                                      scales::rescale,
+                                      to = c(0, 1)))
       }
 
       if (input$clustTab == "Partitioning" ||
           input$clustTab == "Hierarchical") {
 
         if (input$clustTab == "Partitioning") {
-          clust_method <- switch (input$clustmethod,
-                                  "kmeans" = kmeans,
-                                  "clara" = cluster::clara
-                                  )
+          clust_method <- switch(input$clustmethod,
+                                 "kmeans" = kmeans,
+                                 "clara" = cluster::clara
+                                 )
         } else {
-          clust_method <- switch (input$hmethod,
-                                  "hclust" = factoextra::hcut,
-                                  "agnes" = cluster::agnes,
-                                  "diana" = cluster::diana
-                                  )
+          clust_method <- switch(input$hmethod,
+                                 "hclust" = factoextra::hcut,
+                                 "agnes" = cluster::agnes,
+                                 "diana" = cluster::diana
+                                 )
         }
 
         output$clusterVizLeft <- shiny::renderPlot({
@@ -225,7 +240,7 @@ mod_cluster_server <- function(id, r) {
       } else if (input$clustTab == "Decision Trees") {
         part.data <- cluster_data$data
 
-        if (is.null(input$clusterInDep)) {
+        if (is.null(input$cluster_in_dep)) {
           indep <- cluster_data$data$inputs
         } else {
           indep <- input$cluster_in_dep
@@ -240,7 +255,8 @@ mod_cluster_server <- function(id, r) {
             form,
             data = part.data,
             model = TRUE,
-            control = rpart::rpart.control(cp = input$cp, maxdepth = input$maxdepth)
+            control = rpart::rpart.control(cp = input$cp,
+                                           maxdepth = input$maxdepth)
           )
 
         cluster_data$rpart <- rprt
@@ -343,7 +359,10 @@ mod_cluster_server <- function(id, r) {
         #tree_fit <- fitted(tree_party)
         #clust <- predict(tree_party, newdata = cluster_data$rpart$model, type = "node")
         tree_pred <- predict(tree_party, type = "node")
-        clust <- as.numeric(forcats::fct_recode(factor(tree_pred), !!!as.list(setNames(as.character(unique(tree_pred)), seq_len(length(unique(tree_pred)))))))
+        clust <- as.numeric(
+          forcats::fct_recode(factor(tree_pred),
+                              !!!as.list(setNames(as.character(unique(tree_pred)),
+                              seq_len(length(unique(tree_pred)))))))
       } else {
         #dbscan
         clust <- cluster_data$density

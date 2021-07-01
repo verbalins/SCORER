@@ -267,7 +267,7 @@ mod_visualization_server <- function(id, r) {
 
       lapply(
         paste0("plot",
-               seq(1,shiny::isolate(length(r$filtered_data$objectives)) - 1)),
+               seq(1, shiny::isolate(length(r$filtered_data$objectives)) - 1)),
         function(nm) {
           shiny::observeEvent(plotly::event_data("plotly_selected", source = nm), {
             # inform the module about the new brush range

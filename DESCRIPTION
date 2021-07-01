@@ -1,6 +1,6 @@
 Package: SCORER
 Version: 0.0.0.9000
-Date: 2021-05-25
+Date: 2021-06-30
 Title: Reproducible Knowledge Extraction And Visualization Of Multi-Objective Optimization Data
 Authors@R: 
     person(given = "Simon",
@@ -17,7 +17,7 @@ Encoding: UTF-8
 LazyData: true
 URL: https://github.com/verbalins/SCORER
 BugReports: https://github.com/verbalins/SCORER/issues
-Depends: R (>= 2.10)
+Depends: R (>= 4.10)
 Imports:
     readr,
     tidyr,
@@ -41,7 +41,8 @@ Imports:
     foreach,
     doParallel,
     dbscan,
-    factoextra
+    factoextra,
+    Rdpack
 RoxygenNote: 7.1.1
 Roxygen: list(markdown = TRUE)
 RdMacros: Rdpack
