@@ -155,7 +155,6 @@ mod_cluster_server <- function(id, r) {
     })
 
     shiny::observeEvent(input$eval_clus_perf, {
-      browser()
       # Ask to scale data
       cluster_data$data <- r$filtered_data %>%
         dplyr::select(input$cluster_dep, input$cluster_in_dep)
@@ -223,7 +222,8 @@ mod_cluster_server <- function(id, r) {
             method = "silhouette"
           )
 
-          k_val <- as.numeric(dplyr::arrange(cluster.suggestion$data, desc(y))[1, 1])
+          k_val <- as.numeric(dplyr::arrange(cluster.suggestion$data,
+                                             dplyr::desc(y))[1, 1])
 
           output$clusterVizRight <- shiny::renderPlot({
             factoextra::fviz_cluster(
@@ -318,40 +318,30 @@ mod_cluster_server <- function(id, r) {
         }
       } else if (input$clustTab == "Partitioning") {
         if (input$clustmethod == "kmeans") {
-          cluster_data$kmeans <-
-            kmeans(
-              cluster_data$data %>% dplyr::select(input$cluster_dep),
-              centers = input$numClust
-            )
+          cluster_data$kmeans <- kmeans(cluster_data$data %>%
+                                          dplyr::select(input$cluster_dep),
+                                        centers = input$numClust)
           clust <- cluster_data$kmeans$cluster
         } else if (input$clustmethod == "pam") {
-          clust <-
-            cluster::pam(
-              cluster_data$data,
-              k = input$numClust,
-              pamonce = 5,
-              cluster.only = TRUE
-            )
+          clust <- cluster::pam(cluster_data$data,
+                                k = input$numClust,
+                                pamonce = 5,
+                                cluster.only = TRUE)
         } else if (input$clustmethod == "clara") {
           cluster_data$clara <-
-            cluster::clara(
-              cluster_data$data,
-              k = input$numClust,
-              samples = 500,
-              pamLike = TRUE,
-              medoids.x = FALSE,
-              keep.data = FALSE
-            )
+            cluster::clara(cluster_data$data,
+                           k = input$numClust,
+                           samples = 500,
+                           pamLike = TRUE,
+                           medoids.x = FALSE,
+                           keep.data = FALSE)
           clust <- cluster_data$clara$clustering
         } else if (input$clustmethod == "fanny") {
-          clust <-
-            cluster::fanny(
-              cluster_data$data,
-              k = input$numClust,
-              cluster.only = TRUE,
-              keep.diss = FALSE,
-              keep.data = FALSE
-            )
+          clust <- cluster::fanny(cluster_data$data,
+                                  k = input$numClust,
+                                  cluster.only = TRUE,
+                                  keep.diss = FALSE,
+                                  keep.data = FALSE)
         }
       } else if (input$clustTab == "Decision Trees") {
         # Use input$numClust to prune the tree approximately to the number of clusters

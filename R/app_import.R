@@ -1,10 +1,11 @@
+# UI for the import tab
+# Handles:
+# - Data import
+# - Import handling of inputs, outputs, and objectives
+
 mod_import_ui <- function(id) {
   ns <- shiny::NS(id)
   shiny::tagList(
-    # UI for the import tab
-    # Handles:
-    # - Data import
-    # - Import handling of inputs, outputs, and objectives
     shiny::fluidPage(
       shiny::fluidRow(
         # Data selection and import
@@ -113,7 +114,8 @@ mod_import_server <- function(id, r) {
           if (!is.null(input$data_outputs)) {
             r$data$outputs <- input$data_outputs
           } else {
-            r$data$outputs <- r$data$parameters[!(r$data$parameters %in% c(r$data$inputs,r$data$objectives))]
+            r$data$outputs <- r$data$parameters[!(r$data$parameters %in% c(r$data$inputs,
+                                                                           r$data$objectives))]
             shiny::updateSelectInput(session,
                                      "data_outputs",
                                      selected = shiny::isolate(unique(r$data$outputs)))

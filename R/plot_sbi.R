@@ -51,7 +51,7 @@ plot_tree <- function(tree, save) {
 }
 
 plot_pca <- function(.data) {
-  pca  <- prcomp(FSMJ_dist %>% dplyr::select(Distance, attr(., "inputs")))
+  pca  <- prcomp(FSMJ_dist %>% dplyr::select("Distance", attr(., "inputs")))
   fit <- fastcluster::hclust(dist(pca$x[, 1:3]))
   groups <- cutree(fit, k = 4)
 
@@ -116,7 +116,8 @@ plot_splom <- function(.data) {
     diagonal = list(visible = FALSE))
 }
 
-plot2d <- function(.data, x, y, color, unselected_data=NULL, ...) {
+#' @export
+plot2d <- function(.data, x, y, color, unselected_data = NULL, ...) {
   p <- plotly::plot_ly(type = "scattergl",
                   x = stats::as.formula(paste0("~", x)),
                   y = stats::as.formula(paste0("~", y)),
@@ -137,6 +138,7 @@ plot2d <- function(.data, x, y, color, unselected_data=NULL, ...) {
   }
 }
 
+#' @export
 plot3d <- function(.data, x, y, z, color, unselected_data = NULL, ...) {
   suppressWarnings(
     p <- plotly::plot_ly(type = "scatter3d",

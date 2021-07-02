@@ -9,7 +9,7 @@
 
 workspace <- function() {
   df <- FSMJ %>% add_distances(parallel_cores = 10)
-  df <- df %>% partitioning(parameters = c("Distance",names(attr(., "objectives"))))
+  df <- df %>% partitioning(parameters = c("Distance", names(attr(., "objectives"))))
   #t %>% head(1000) %>% NbClust::NbClust(data = ., diss = NULL, distance = "euclidean",
   #                                      min.nc = 2, max.nc = 15, method = "kmeans")
 

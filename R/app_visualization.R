@@ -9,15 +9,14 @@ mod_visualization_ui <- function(id) {
           id = ns("chartTab"),
           type = "tabs",
           shiny::tabPanel("3D", shiny::fluidRow(
-            shiny::column(
-              10,
+            shiny::column(10,
               tags$style(
                 type = "text/css",
                 "#scatter3d {height: calc(100vh - 80px) !important;}"),
-                shinycssloaders::withSpinner(
-                  plotly::plotlyOutput(ns("scatter3d"),
-                                       height = "100%",
-                                       width = "100%"))),
+              shinycssloaders::withSpinner(
+                plotly::plotlyOutput(ns("scatter3d"),
+                                     height = "100%",
+                                     width = "100%"))),
             shiny::column(2,
                          shiny::inputPanel(
                          shiny::uiOutput(ns("x")),
@@ -118,7 +117,7 @@ mod_visualization_server <- function(id, r) {
                                      shiny::isolate(input$color)))),
                           source = "pcoords",
                           data = r$filtered_data) %>%
-            plotly::event_register(event="plotly_restyle") #%>%
+            plotly::event_register(event = "plotly_restyle") #%>%
             #plotly::toWebGL()
         )
       })
@@ -133,7 +132,6 @@ mod_visualization_server <- function(id, r) {
                        input$color,
                        r$df_selected()$unsel,
                        height = 600, source = "s3d")
-
       })
 
       # maintain a collection of selection ranges
@@ -198,7 +196,8 @@ mod_visualization_server <- function(id, r) {
             dplyr::filter(Iteration %in% unlist(selected_points$data[i]))
         }
         isolate({
-          if (!is.null(input$colorslider) && input$color %in% colnames(r$filtered_data)) {
+          if (!is.null(input$colorslider) &&
+              input$color %in% colnames(r$filtered_data)) {
             df_filterdata$sel <- parcoords_sel %>%
               dplyr::filter(dplyr::between(.[[input$color]],
                                            input$colorslider[1],
@@ -220,7 +219,8 @@ mod_visualization_server <- function(id, r) {
       output$plots2d <- shiny::renderUI({
         ns <- session$ns
         plot_output_list <- lapply(
-          seq(1:(length(shiny::isolate(r$filtered_data$objectives)) - 1)), function(i) {
+          seq(1:(length(shiny::isolate(r$filtered_data$objectives)) - 1)),
+          function(i) {
             plotname <- paste0("plot", i)
             plotly::plotlyOutput(
               ns(plotname), # ns because it's a plotlyOutput
@@ -228,7 +228,7 @@ mod_visualization_server <- function(id, r) {
                 floor((1 / (length(r$filtered_data$objectives) - 1)) * 100) - 1,
                 "%"),
               inline = TRUE, height = "100%")
-        })
+          })
 
         # Convert the list to a tagList - this is necessary for the list of
         # items to display properly.
@@ -248,8 +248,8 @@ mod_visualization_server <- function(id, r) {
           local({
             my_i <- i
             plotname <- paste0("plot", my_i) # Don't use ns here
-            #x = stats::formula(paste0("~",dim_list()$Objectives[[1]])),
-            #y = stats::formula(paste0("~",dim_list()$Objectives[[my_i+1]])),
+            #x = stats::formula(paste0("~", dim_list()$Objectives[[1]])),
+            #y = stats::formula(paste0("~", dim_list()$Objectives[[my_i + 1]])),
             output[[plotname]] <- plotly::renderPlotly({
               SCORER::plot2d(r$df_selected()$sel,
                              r$df_selected()$sel$objectives[[1]],
@@ -266,10 +266,10 @@ mod_visualization_server <- function(id, r) {
       })
 
       lapply(
-        paste0("plot",
-               seq(1, shiny::isolate(length(r$filtered_data$objectives)) - 1)),
+        paste0("plot", seq(1, shiny::isolate(length(r$filtered_data$objectives)) - 1)),
         function(nm) {
-          shiny::observeEvent(plotly::event_data("plotly_selected", source = nm), {
+          shiny::observeEvent(plotly::event_data("plotly_selected",
+                                                 source = nm), {
             # inform the module about the new brush range
             selected <- plotly::event_data("plotly_selected", source = nm)
             if (is.null(selected)) {
@@ -277,12 +277,13 @@ mod_visualization_server <- function(id, r) {
             } else {
               selected_points$data[[nm]] <- selected$customdata
             }
-        })
+          })
 
-        shiny::observeEvent(plotly::event_data("plotly_doubleclick", source = nm), {
-          # Reset the brushing
-          selected_points$data <- NULL
-        })
+          shiny::observeEvent(plotly::event_data("plotly_doubleclick",
+                                                 source = nm), {
+            # Reset the brushing
+            selected_points$data <- NULL
+          })
       })
 
       shiny::observeEvent(input$reset, {

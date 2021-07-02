@@ -4,7 +4,7 @@
 #' @importFrom foreach %dopar%
 add_distances <- function(.data, parallel_cores = 0) {
   objectives <- attr(.data, "objectives")
-  limits <- sapply(.data[, names(objectives)], \(x) {c(min(x), max(x))})
+  limits <- sapply(.data[, names(objectives)], function(x) { c(min(x), max(x)) })
   .data[, names(objectives)] <- normalizeValues(.data[, names(objectives)],
                                                objectives)
 

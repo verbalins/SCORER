@@ -25,12 +25,12 @@ freqchart <-
       tidyr::gather() %>%
       dplyr::group_by(key) %>%
       dplyr::summarize(freq = sum(value) / nrow(filtered)) %>%
-      dplyr::arrange(desc(freq))
+      dplyr::arrange(dplyr::desc(freq))
 
     frequencies %>%
       utils::head(n) %>%
       ggplot2::ggplot(ggplot2::aes(
-        x = stats::reorder(key,-freq),
+        x = stats::reorder(key, -freq),
         y = freq,
         #label = signif(freq*100, 4))) +
         label = scales::percent(freq, accuracy = 0.1, suffix = "%")
@@ -71,16 +71,16 @@ plotPareto <- function(.data, objectives = names(attr(.data, "objectives")), int
       if (length(objectives) < 3) {
         p <- .data %>%
           plotly::plot_ly(
-            x = stats::as.formula(paste0('~', objectives[1])),
-            y = stats::as.formula(paste0('~', objectives[2])),
+            x = stats::as.formula(paste0("~", objectives[1])),
+            y = stats::as.formula(paste0("~", objectives[2])),
             color = ~ Rank,
             type = "scattergl",
             mode = "markers",
             hoverinfo = "text",
             text = ~ paste(
-              '</br> Improvements: ', minImp,
-              '</br> Out: ', round(maxOut),
-              '</br> Rank: ', Rank
+              "</br> Improvements: ", minImp,
+              "</br> Out: ", round(maxOut),
+              "</br> Rank: ", Rank
             ),
             name = "Rank 1-5"
           )
@@ -98,18 +98,18 @@ plotPareto <- function(.data, objectives = names(attr(.data, "objectives")), int
         }
       } else if (length(objectives) == 3) {
       p <- .data %>% plotly::plot_ly(
-        x = stats::as.formula(paste0('~', objectives[1])),
-        y = stats::as.formula(paste0('~', objectives[2])),
-        z = stats::as.formula(paste0('~', objectives[3])),
+        x = stats::as.formula(paste0("~", objectives[1])),
+        y = stats::as.formula(paste0("~", objectives[2])),
+        z = stats::as.formula(paste0("~", objectives[3])),
         color = ~ Rank,
         mode = "markers",
         type = "scatter3d",
         size = 2,
         text = ~ paste(
-          '</br> Improvements: ', minImp,
-          '</br> Out: ', round(maxOut),
-          '</br> LT: ', round(minLT / 3600, 2), "h",
-          '</br> Rank: ', Rank
+          "</br> Improvements: ", minImp,
+          "</br> Out: ", round(maxOut),
+          "</br> LT: ", round(minLT / 3600, 2), "h",
+          "</br> Rank: ", Rank
         )
       )
     }
@@ -157,6 +157,7 @@ exportPlot <-
            width = 15,
            height = 7,
            ...) {
+
     if (device == "pdf" || device == "png") {
       ggplot2::ggsave(
         paste0(filename, ".", device),

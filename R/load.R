@@ -21,10 +21,10 @@ loaddataset <- function(filename,
 
   opt <- opt_info %>%
     utils::head(., -4) %>%
-    readr::read_delim(delim = ";",trim_ws = TRUE, locale = cust_locale) %>%
+    readr::read_delim(delim = ";", trim_ws = TRUE, locale = cust_locale) %>%
     dplyr::select(-dplyr::any_of(c("Replications", "Error", "ConstraintViolation")),
                   maxOut = dplyr::starts_with("maxTP")) %>%
-    dplyr::select(where(function(x){!all(is.na(x))}))
+    dplyr::select(where(function(x) { !all(is.na(x)) }))
 
   # TODO: Evaluate if parameters are at the bottom.
   # If so, extract them
@@ -73,12 +73,12 @@ loaddataset <- function(filename,
   # Add Iteration if it doesn't exist, set Iteration in loaded order
   if (!("Iteration" %in% colnames(opt))) {
     opt <- opt %>%
-      dplyr::mutate(Iteration = seq(1,nrow(.)),
-                    .before=names(opt_objectives)[1])
+      dplyr::mutate(Iteration = seq(1, nrow(.)),
+                    .before = names(opt_objectives)[1])
   }
 
   # Add Rank if it doesn't exist, for all objectives
-  if(!("Rank" %in% colnames(opt))) {
+  if (!("Rank" %in% colnames(opt))) {
     opt <- opt %>% ndsecr(objectives = opt_objectives)
   }
 

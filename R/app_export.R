@@ -127,9 +127,7 @@ mod_export_server <- function(id, r) {
                        sep = ", <br>")
 
         preamble <- paste0("library(SCORER)<br>",
-                           "set.seed(",
-                           r$randomseed,
-                           ")<br>")
+                           "set.seed(", r$randomseed, ")<br>")
         paste(preamble,
               load_data,
               import_data,

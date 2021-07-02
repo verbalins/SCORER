@@ -51,8 +51,7 @@ calcTrees <- function(.data, save = FALSE) {
   #summary(fitCategories) # detailed summary of splits
 }
 
-list.rules.rpart <- function(model)
-{
+list.rules.rpart <- function(model) {
   if (!inherits(model, "rpart")) stop("Not a legitimate rpart tree")
   #
   # Get some information.
@@ -60,12 +59,12 @@ list.rules.rpart <- function(model)
   frm     <- model$frame
   names   <- row.names(frm)
   ylevels <- attr(model, "ylevels")
-  ds.size <- model$frame[1,]$n
+  ds.size <- model$frame[1, ]$n
   #
   # Print each leaf node as a rule.
   #
   for (i in seq_len(nrow(frm))) {
-    if (frm[i,1] == "<leaf>") {
+    if (frm[i, 1] == "<leaf>") {
       # The following [, 5] is hardwired - needs work!
       cat("\n")
       cat(sprintf(" Rule number: %s ", names[i]))
