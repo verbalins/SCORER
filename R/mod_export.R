@@ -123,6 +123,8 @@ mod_export_server <- function(id, r) {
         rules <- paste("rules <- SCORER::fpm(df_clustered",
                        paste0("max_level = ", r$fpmlevel),
                        paste0("min_sig = ", r$minsig),
+                       paste0("use_equality = ", r$fpmequality),
+                       paste0("only_most_significant = ", r$fpmonlysig),
                        "selected_data = df_selected$Iteration)",
                        sep = ", <br>")
 

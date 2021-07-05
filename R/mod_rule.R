@@ -16,11 +16,17 @@ mod_rule_ui <- function(id) {
                                      0.5, 0.1, 1.0, 0.1),
                  shiny::numericInput(ns("fpmlevel"),
                                      "Rule levels", 1, 1, 4, 1),
+                 shiny::checkboxInput(ns("fpmonlymostsig"),
+                                     "Use only most significant?",
+                                     value = TRUE),
+                 shiny::checkboxInput(ns("fpmequal"),
+                                      "Use equality rules?",
+                                      value = TRUE),
                  shiny::hr(),
                  shiny::selectInput(ns("pointsel"),
                                     "Reference point or manual selection?",
-                                    choices = c("Reference point",
-                                                "From Visualization tab"),
+                                    choices = c("From Visualization tab",
+                                                "Reference point"),
                                     selected = ""),
                  shiny::uiOutput(ns("referencepoint")),
                  shiny::hr(),
@@ -36,7 +42,7 @@ mod_rule_ui <- function(id) {
           ),
           shinydashboard::box(
             width = NULL,
-            height = 900,
+            #height = 800,
             title = "Rules",
             shiny::tabsetPanel(
               id = ns("fpmTab"),
@@ -238,7 +244,9 @@ mod_rule_server <- function(id, rval) {
           rval$rules_r <- fpm(rval$filtered_data,
                              selected_data = rval$selected_data,
                              max_level = input$fpmlevel,
-                             min_sig = input$minsig) %>%
+                             min_sig = input$minsig,
+                             use_equality = input$fpmequal,
+                             only_most_significant = input$fpmonlymostsig) %>%
             dplyr::select(Rule, Significance, Unsignificance, Ratio)
 
           output$FPMruletable <- DT::renderDT(dt_rules(rval$rules_r))
@@ -261,6 +269,8 @@ mod_rule_server <- function(id, rval) {
 
         rval$minsig <- input$minsig
         rval$fpmlevel <- input$fpmlevel
+        rval$fpmequality <- input$fpmequal
+        rval$fpmonlysig <- input$fpmonlymostsig
       })
 
       shiny::observeEvent(input$sbirulebutton, {
@@ -276,7 +286,10 @@ mod_rule_server <- function(id, rval) {
 
       dt_rules <- function(data) {
         DT::datatable(data,
-                      options = list(searching = FALSE),
+                      options = list(searching = FALSE,
+                                     scrollY = 300,
+                                     scrollCollapse = TRUE,
+                                     scrollX = TRUE),
                       rownames = FALSE) %>%
           DT::formatPercentage(columns = c("Significance",
                                            "Unsignificance",
