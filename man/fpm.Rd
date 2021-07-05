@@ -6,10 +6,10 @@
 \usage{
 fpm(
   .data,
-  max_level = 1,
-  min_sig = 0.5,
   selected_data,
   unselected_data = NULL,
+  max_level = 1,
+  min_sig = 0.5,
   use_equality = TRUE,
   only_most_significant = TRUE
 )
@@ -17,13 +17,13 @@ fpm(
 \arguments{
 \item{.data}{Data input, obtained using \code{\link[=loaddataset]{loaddataset()}}}
 
-\item{max_level}{The maximum level of rules to be returned, default 1}
-
-\item{min_sig}{Minimum significance a rule will have to meet to be included}
-
 \item{selected_data}{The selected solutions, either a vector of iterations or a named list of objectives and their values}
 
 \item{unselected_data}{The rest of the solutions not in \link{selected_data}}
+
+\item{max_level}{The maximum level of rules to be returned, default 1}
+
+\item{min_sig}{Minimum significance a rule will have to meet to be included}
 
 \item{use_equality}{Include rules such as x == 1?}
 

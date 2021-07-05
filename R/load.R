@@ -22,7 +22,9 @@ loaddataset <- function(filename,
   opt <- opt_info %>%
     utils::head(., -4) %>%
     readr::read_delim(delim = ";", trim_ws = TRUE, locale = cust_locale) %>%
-    dplyr::select(-dplyr::any_of(c("Replications", "Error", "ConstraintViolation")),
+    dplyr::select(-dplyr::any_of(c("Replications",
+                                   "Error",
+                                   "ConstraintViolation")),
                   maxOut = dplyr::starts_with("maxTP")) %>%
     dplyr::select(where(function(x) { !all(is.na(x)) }))
 
@@ -40,7 +42,10 @@ loaddataset <- function(filename,
   opt_parameters <- opt_info %>%
     readr::read_delim(delim = ";", skip = 1, n_max = 1, col_names = FALSE,
                       trim_ws = T, locale = cust_locale) %>%
-    dplyr::select(!!-1) %>%
+    dplyr::select(!!-1,
+                  -dplyr::any_of(c("Replications",
+                                   "Error",
+                                   "ConstraintViolation"))) %>%
     dplyr::slice() %>%
     unlist(., use.names = FALSE)
 

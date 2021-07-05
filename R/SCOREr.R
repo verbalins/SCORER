@@ -69,7 +69,6 @@ optresult <- function(data, opt_name, opt_id=1, objectives, inputs, outputs, par
                 parameters = parameters)
 }
 
-
 #S4 implementation
 #setOldClass(c("tbl_df", "tbl", "data.frame"))
 # setOldClass("data.frame")
