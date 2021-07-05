@@ -22,15 +22,11 @@ URL: https://github.com/verbalins/SCORER
 BugReports: https://github.com/verbalins/SCORER/issues
 Depends: R (>= 4.1)
 Imports:
-    dplyr,
-    tidyr,
-    readr,
-    magrittr,
+    tidyverse,
     rlang,
     BBmisc,
     ecr,
     plotly,
-    stringr,
     ggtext,
     tikzDevice,
     scales,
@@ -41,7 +37,6 @@ Imports:
     processx,
     attempt,
     DT,
-    glue,
     golem,
     htmltools,
     shiny
@@ -63,7 +58,6 @@ Suggests:
     rpart.plot,
     party,
     partykit,
-    forcats,
     gtools,
     spelling
 Language: en-US
