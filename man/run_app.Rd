@@ -9,7 +9,6 @@ run_app(
   options = list(),
   enableBookmarking = NULL,
   uiPattern = "/",
-  port = 8080,
   maxRequestSize = 30 * 1024^2,
   ...
 )

@@ -12,7 +12,6 @@ run_app <- function(
   options = list(),
   enableBookmarking = NULL,
   uiPattern = "/",
-  port = 8080,
   maxRequestSize = 30 * 1024 ^ 2,
   ...
 ) {
@@ -23,8 +22,7 @@ run_app <- function(
       onStart = onStart,
       enableBookmarking = enableBookmarking,
       uiPattern = uiPattern,
-      options = list(port = port,
-                     maxRequestSize = maxRequestSize)
+      options = list(maxRequestSize = maxRequestSize)
     ),
     golem_opts = list(...)
   )
