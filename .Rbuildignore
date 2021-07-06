@@ -13,3 +13,5 @@ dev_history.R
 $run_dev.*
 ^Dockerfile$
 ^\.dockerignore$
+^app\.R$
+^rsconnect$
