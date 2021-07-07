@@ -30,12 +30,8 @@ Imports:
     ggtext,
     tikzDevice,
     scales,
-    collapse,
     foreach,
     doParallel,
-    Rdpack,
-    processx,
-    attempt,
     DT,
     golem,
     htmltools,
@@ -56,8 +52,9 @@ Suggests:
     rattle,
     rpart,
     rpart.plot,
-    party,
     partykit,
     gtools,
+    attempt,
+    Rdpack,
     spelling
 Language: en-US
