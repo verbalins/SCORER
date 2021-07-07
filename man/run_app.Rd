@@ -10,6 +10,7 @@ run_app(
   enableBookmarking = NULL,
   uiPattern = "/",
   maxRequestSize = 30 * 1024^2,
+  port = 8080,
   ...
 )
 }
