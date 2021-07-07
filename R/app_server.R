@@ -12,9 +12,23 @@ app_server <- function( input, output, session ) {
   # TODO: Default values set, change for prod
   seed <- 42
   set.seed(seed)
-  r <- shiny::reactiveValues(data = SCORER::FMC,
-                             filtered_data = SCORER::FMC,
-                             randomseed = seed)
+  r <- shiny::reactiveValues(randomseed = seed)
+
+  # React for parameters to [SCORER::run_app]
+  if (!is.null(golem::get_golem_options("dataset"))) {
+    if (is.character(golem::get_golem_options("dataset"))) {
+      df <- SCORER::loaddataset(golem::get_golem_options("dataset"))
+    } else {
+      df <- golem::get_golem_options("dataset")
+    }
+    r$data <- df
+    r$filtered_data <- df
+  } else if (get_golem_config("app_prod")  == "no") {
+    # Pre-load for development
+    r$data  <- SCORER::FMC
+    r$filtered_data <- SCORER::FMC
+  }
+
 
   ### Data import logic --------------------------------------------
   mod_import_server("import", r)
