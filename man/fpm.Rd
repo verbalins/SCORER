@@ -17,7 +17,8 @@ fpm(
 \arguments{
 \item{.data}{Data input, obtained using \code{\link[=loaddataset]{loaddataset()}}}
 
-\item{selected_data}{The selected solutions, either a vector of iterations or a named list of objectives and their values}
+\item{selected_data}{The selected solutions, either a vector of iterations or a named
+list of objectives and their values}
 
 \item{unselected_data}{The rest of the solutions not in \link{selected_data}}
 

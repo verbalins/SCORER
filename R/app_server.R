@@ -5,7 +5,7 @@
 #' @import shiny
 #' @importFrom shiny reactiveValues
 #' @noRd
-app_server <- function( input, output, session ) {
+app_server <- function(input, output, session) {
   # Your application server logic
   # reactiveValues used to hold the data in the app,
   #  communication between modules.

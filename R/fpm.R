@@ -6,7 +6,8 @@
 #' Flexible pattern mining \insertCite{Bandaru2017b}{SCORER} implemented in R().
 #'
 #' @param .data Data input, obtained using [SCORER::loaddataset()]
-#' @param selected_data The selected solutions, either a vector of iterations or a named list of objectives and their values
+#' @param selected_data The selected solutions, either a vector of iterations or a named
+#' list of objectives and their values
 #' @param unselected_data The rest of the solutions not in [selected_data]
 #' @param max_level The maximum level of rules to be returned, default 1
 #' @param min_sig Minimum significance a rule will have to meet to be included
@@ -137,7 +138,7 @@ create_truth_table <- function(.data, use_equality, rules = NULL) {
   } else {
     rules <- apply(rules[seq_len(nrow(rules)), ],
                    1,
-                   \(x) { paste0(x, collapse = " & ")})
+                   function(x) { paste0(x, collapse = " & ")})
   }
 
   cl <- parallel::makeCluster(parallel::detectCores(TRUE) - 1)
@@ -162,7 +163,7 @@ create_truth_table <- function(.data, use_equality, rules = NULL) {
 create_first_rules <- function(col_name, data, params) {
   col_rule <- paste0(col_name,
                      sapply(sort(unique(ceiling(data[[col_name]] * 1000) / 1000)),
-                            \(x) paste0(params, x)))
+                            function(x) paste0(params, x)))
   col_rule <- col_rule[2:length(col_rule)] # Remove first
   col_rule[seq_along(col_rule) - 1] # Remove last element
 }
@@ -171,10 +172,10 @@ create_first_rules <- function(col_name, data, params) {
 #' @param .data data to analyze
 #'
 #' @param reference_point named list of reference points
-#' @param kNN the fraction of neighbouring solutions to include
+#' @param knn the fraction of neighbouring solutions to include
 #'
 #' @export
-assign_reference_point <- function(.data, reference_point, kNN) {
+assign_reference_point <- function(.data, reference_point, knn) {
   dataset <- .data
   scaled <- .data %>%
     dplyr::filter(Rank == 1) %>%
@@ -203,6 +204,6 @@ assign_reference_point <- function(.data, reference_point, kNN) {
                     sqrt(rowSums(dplyr::across(names(scaled_ref))))) %>%
     #dplyr::distinct(across(names(reference_point)), .keep_all = TRUE) %>%
     dplyr::arrange(Distance) %>%
-    head(n = kNN * nrow(.)) %>%
+    head(n = knn * nrow(.)) %>%
     dplyr::pull(Iteration)
 }

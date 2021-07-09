@@ -4,14 +4,14 @@
 \alias{assign_reference_point}
 \title{assign reference point}
 \usage{
-assign_reference_point(.data, reference_point, kNN)
+assign_reference_point(.data, reference_point, knn)
 }
 \arguments{
 \item{.data}{data to analyze}
 
 \item{reference_point}{named list of reference points}
 
-\item{kNN}{the fraction of neighbouring solutions to include}
+\item{knn}{the fraction of neighbouring solutions to include}
 }
 \description{
 assign reference point
