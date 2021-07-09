@@ -96,7 +96,7 @@ mod_visualization_server <- function(id, r) {
                              "Rank" = 1,
                              "Distance" = NULL,
                              "Cluster" = 1)
-          shiny::sliderInput(ns("colorslider"), "Filter Color:",
+          shiny::sliderInput(ns("colorslider"), paste0("Filter ", input$color, ":"),
                              min_val,
                              max_val,
                              value = c(min_val, max_val),
@@ -195,17 +195,18 @@ mod_visualization_server <- function(id, r) {
           parcoords_sel <- parcoords_sel %>%
             dplyr::filter(Iteration %in% unlist(selected_points$data[i]))
         }
-        isolate({
+
           if (!is.null(input$colorslider) &&
               input$color %in% colnames(r$filtered_data)) {
-            df_filterdata$sel <- parcoords_sel %>%
+            shiny::isolate({  df_filterdata$sel <- parcoords_sel %>%
               dplyr::filter(dplyr::between(.[[input$color]],
                                            input$colorslider[1],
                                            input$colorslider[2]))
+            })
           } else {
             df_filterdata$sel <- parcoords_sel
           }
-        })
+
         df_filterdata$unsel <- dplyr::anti_join(r$filtered_data,
                                                 df_filterdata$sel,
                                                 by = "Iteration")

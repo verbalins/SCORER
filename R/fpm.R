@@ -6,7 +6,8 @@
 #' Flexible pattern mining \insertCite{Bandaru2017b}{SCORER} implemented in R().
 #'
 #' @param .data Data input, obtained using [SCORER::loaddataset()]
-#' @param selected_data The selected solutions, either a vector of iterations or a named list of objectives and their values
+#' @param selected_data The selected solutions, either a vector of iterations or a named
+#' list of objectives and their values
 #' @param unselected_data The rest of the solutions not in [selected_data]
 #' @param max_level The maximum level of rules to be returned, default 1
 #' @param min_sig Minimum significance a rule will have to meet to be included
@@ -16,8 +17,9 @@
 #' @export
 #' @importFrom magrittr %>%
 #' @importFrom Rdpack reprompt
+#' @importFrom gtools combinations
 #' @references{
-#'  \insertAllCited{}
+#'   \insertAllCited{}
 #' }
 fpm <- function(.data,
                 selected_data,
@@ -50,7 +52,7 @@ fpm <- function(.data,
   comb <- NULL
   for (i in seq(1, max_level)) { # Create each level of rules
     if (i > 1) {
-      first_rules <- all_rules[[1]]$Rule[1:min(length(all_rules[[1]]), 15)]
+      first_rules <- all_rules[[1]]$Rule[1:min(nrow(all_rules[[1]]), 15)]
       comb <- gtools::combinations(length(first_rules),
                                    i,
                                    first_rules,
@@ -89,15 +91,16 @@ create_rules <- function(data, level, min_sig, selected_data) {
                         Unsignificance = Unsel / (nrow(data) - length(selected_data)),
                         Ratio = dplyr::if_else(Significance >= min_sig,
                                                dplyr::if_else(is.infinite(Sel / Unsel),
-                                                              0.0, Sel / Unsel),
+                                                              0.0,
+                                                              Sel / Unsel),
                                                0.0)) %>%
     dplyr::filter(Ratio > 0)
 
   if (level == 1) {
     tib <- tib %>%
       dplyr::arrange(desc(Ratio), Sign) %>%
-      dplyr::select(-Sign) %>%
-      dplyr::distinct(Significance, Ratio, .keep_all = TRUE)
+      dplyr::select(-Sign) #%>%
+      #dplyr::distinct(Significance, Ratio, .keep_all = TRUE)
   } else {
     tib <- tib %>%
       dplyr::select(-Sign) %>%
@@ -112,12 +115,15 @@ create_rules <- function(data, level, min_sig, selected_data) {
     dplyr::group_by(Var) %>%
     dplyr::slice_max(order_by = Ratio, n = 1) %>%
     dplyr::ungroup() %>%
-    dplyr::arrange(dplyr::desc(Ratio))
+    dplyr::arrange(dplyr::desc(Ratio)) %>%
+    dplyr::distinct(Significance, Ratio, Var, .keep_all = TRUE)
 }
 
 # Creating the truth table for this rule level
 #' @importFrom rlang :=
 #' @importFrom foreach %dopar%
+#' @importFrom parallel makeCluster detectCores stopCluster
+#' @importFrom doParallel registerDoParallel stopImplicitCluster
 create_truth_table <- function(.data, use_equality, rules = NULL) {
   col_name <- .data$inputs
   if (is.null(rules)) {
@@ -125,18 +131,25 @@ create_truth_table <- function(.data, use_equality, rules = NULL) {
     if (!use_equality) {
       params <- c(" < ", " > ")
     }
-    rules <- unlist(lapply(col_name[seq_along(col_name)], create_first_rules, .data, params))
+    rules <- unlist(lapply(col_name[seq_along(col_name)],
+                           create_first_rules,
+                           .data,
+                           params))
   } else {
-    rules <- apply(rules[seq_len(nrow(rules)), ], 1, \(x) { paste0(x, collapse = " & ")})
+    rules <- apply(rules[seq_len(nrow(rules)), ],
+                   1,
+                   function(x) { paste0(x, collapse = " & ")})
   }
 
   cl <- parallel::makeCluster(parallel::detectCores(TRUE) - 1)
   doParallel::registerDoParallel(cl)
 
+
   newdata <- foreach::foreach(rule = seq_along(rules), .combine = cbind, .packages = c("dplyr")) %dopar% {
-    .data %>% dplyr::mutate(!!(rules[rule]) := dplyr::if_else(eval(rlang::parse_expr(as.character(rules[rule]))),
-                                                              1,
-                                                              0),
+    .data %>% dplyr::mutate(!!(rules[rule]) :=
+                              dplyr::if_else(eval(rlang::parse_expr(as.character(rules[rule]))),
+                              1,
+                              0),
                             .keep = "none")
   }
 
@@ -150,7 +163,47 @@ create_truth_table <- function(.data, use_equality, rules = NULL) {
 create_first_rules <- function(col_name, data, params) {
   col_rule <- paste0(col_name,
                      sapply(sort(unique(ceiling(data[[col_name]] * 1000) / 1000)),
-                            \(x) paste0(params, x)))
+                            function(x) paste0(params, x)))
   col_rule <- col_rule[2:length(col_rule)] # Remove first
   col_rule[seq_along(col_rule) - 1] # Remove last element
+}
+
+#' assign reference point
+#' @param .data data to analyze
+#'
+#' @param reference_point named list of reference points
+#' @param knn the fraction of neighbouring solutions to include
+#'
+#' @export
+assign_reference_point <- function(.data, reference_point, knn) {
+  dataset <- .data
+  scaled <- .data %>%
+    dplyr::filter(Rank == 1) %>%
+    dplyr::select(Iteration, names(reference_point)) %>%
+    dplyr::bind_rows(data.frame(Iteration = 99999,
+                                reference_point))
+
+  scaled <- scaled %>%
+    dplyr::mutate(dplyr::across(dataset$objectives,
+                                scales::rescale,
+                                to = c(0, 1)))
+
+  scaled_ref <- scaled %>%
+    dplyr::slice(nrow(.)) %>%
+    dplyr::select(dataset$objectives) %>%
+    as.numeric(.)
+
+  names(scaled_ref) <- names(reference_point)
+
+  selected <- scaled %>%
+    dplyr::filter(Iteration != 99999) %>%
+    dplyr::mutate(
+      dplyr::across(names(scaled_ref),
+                    ~ (.x - scaled_ref[[dplyr::cur_column()]]) ^ 2)) %>%
+    dplyr::mutate(Distance =
+                    sqrt(rowSums(dplyr::across(names(scaled_ref))))) %>%
+    #dplyr::distinct(across(names(reference_point)), .keep_all = TRUE) %>%
+    dplyr::arrange(Distance) %>%
+    head(n = knn * nrow(.)) %>%
+    dplyr::pull(Iteration)
 }

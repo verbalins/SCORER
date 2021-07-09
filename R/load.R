@@ -11,7 +11,8 @@
 loaddataset <- function(filename,
                         objectives = NULL,
                         inputs = NULL,
-                        outputs = NULL, custom_outputs = NULL) {
+                        outputs = NULL,
+                        custom_outputs = NULL) {
 
   opt_info <- readr::read_lines(filename, skip_empty_rows = T) %>%
     stringr::str_replace_all("[\r\n]", "") %>%
@@ -41,7 +42,11 @@ loaddataset <- function(filename,
     dplyr::pull(2)
 
   opt_parameters <- colnames(opt) %>%
-    stringr::str_remove_all(pattern = c("Iteration", "Rank")) %>%
+    stringr::str_remove_all(pattern = c("Iteration",
+                                        "Rank",
+                                        "ConstraintViolation",
+                                        "Replications",
+                                        "Error")) %>%
     .[. != ""]
 
   opt_objectives <- opt_info %>%
@@ -68,7 +73,9 @@ loaddataset <- function(filename,
     }
   }
 
-  outputs <- opt_parameters[!(opt_parameters %in% inputs)]
+  if (is.null(outputs)) {
+    outputs <- opt_parameters[!(opt_parameters %in% inputs)]
+  }
 
   # Add Iteration if it doesn't exist, set Iteration in loaded order
   if (!("Iteration" %in% colnames(opt))) {

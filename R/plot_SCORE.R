@@ -7,6 +7,9 @@
 #'
 #' @export
 #' @return A ggplot2 object showing the frequencies of parameters
+#' @importFrom ggplot2 ggplot aes geom_col labs expansion element_text
+#' @importFrom scales percent
+#' @importFrom ggtext geom_richtext
 freqchart <-
   function(.data,
            objectives = names(attr(.data, "objectives")),
@@ -63,6 +66,9 @@ freqchart <-
 #' @param data A dataset loaded with [loaddataset()], and has ranks applied through [ndsecr()]
 #' @param objectives A character vector indicating the objectives to show, defaults to first two objectives
 #' @return A ggplot2 object showing the fronts of the optimization
+#' @importFrom stats as.formula
+#' @importFrom dplyr filter select arrange if_else vars distinct_at
+#' @importFrom ggplot2 ggplot geom_point geom_text geom_line scale_y_continuous theme_classic element_text
 plotPareto <- function(.data, objectives = names(attr(.data, "objectives")), interactive = FALSE) {
     labelnames <- c("Improvements", "Output", "Lead Time")
     names(labelnames) <- c("minImp", "maxOut", "minLT")
@@ -149,6 +155,9 @@ plotPareto <- function(.data, objectives = names(attr(.data, "objectives")), int
 #' @export
 #' @param filename The name of the resulting file
 #' @param device pdf for pdf files or tex for tex file
+#' @importFrom ggplot2 ggsave last_plot
+#' @importFrom tikzDevice tikz
+#' @importFrom grDevices dev.off
 exportPlot <-
   function(.plot = ggplot2::last_plot(),
            filename,

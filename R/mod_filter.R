@@ -8,7 +8,7 @@ mod_filter_ui <- function(id) {
       shiny::fluidRow(
         # Data filtering, specific filters for certain values, initial screening
         shinydashboard::box(title = "Data summary", width = NULL,
-                            shiny::helpText("Use this table to filter the data you want to analyze.|
+                            shiny::helpText("Use this table to filter the data you want to analyze.
                                             It will persist through the other tabs."),
                             shiny::helpText("Filter the table and then use the Apply Filter button at the bottom."),
                             shinycssloaders::withSpinner(DT::dataTableOutput(ns("datatable"))),
@@ -38,6 +38,7 @@ mod_filter_server <- function(id, r) {
                       filter = "top",
                       options = list(scrollX = TRUE,
                                      scrollY = 600,
+                                     scrollCollapse = TRUE,
                                      pageLength = 50),
                       rownames = FALSE)
       })
