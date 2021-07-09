@@ -54,20 +54,6 @@ mod_export_server <- function(id, r) {
 
       # Get code for the analysis
       get_code <- shiny::reactive({
-        pastevector  <- function(x, y) {
-          paste0(x,
-                 " = c(",
-                 paste0("\"", y, "\"", collapse = ", "),
-                 ")")
-        }
-
-        createfilter <- function(x, y) {
-          val <- unlist(stringr::str_split(x, " ... "))
-          paste0("dplyr::between(",
-                 paste(y, val[1], val[2], sep = ", "),
-                 ")")
-        }
-
         load_data <- paste0("df <- SCORER::loaddataset(file = \"",
                             r$filepath,
                             "\",<br>",
@@ -103,7 +89,11 @@ mod_export_server <- function(id, r) {
                                 ")<br>")
         }
 
-        clustered_data <- paste0("df_clustered <- df_filtered # Not implemented <br>")
+        if (is.null(r)) {
+          clustered_data <- paste0("df_clustered <- df_filtered # Not implemented <br>")
+        } else {
+
+        }
 
         if (nrow(r$df_selected()$unsel) == 0) {
           selected_data <- "df_selected <- df_clustered # No selected solutions <br> "
@@ -119,14 +109,38 @@ mod_export_server <- function(id, r) {
 
         # Rules will be dependent on weather we have assigned a reference point
         #  or selected iterations manually
+        if (!is.null(r$rules_r)) {
+          if (r$rule_type == "Reference") {
+            refpointassign <- paste0(paste(names(r$reference_point),
+                                           paste(r$reference_point),
+                                           sep = " = "),
+                                     collapse = ", ")
+            refpoint <- paste("nearest_solutions <- SCORER::assign_reference_point(df_clustered",
+                              paste0("list(", refpointassign, ")"),
+                              paste0("kNN = ", r$kNN, ") <br>"),
+                              sep = ", <br>")
+            rules <- paste(refpoint,
+                           paste("rules <- SCORER::fpm(df_clustered",
+                             paste0("max_level = ", r$fpmlevel),
+                             paste0("min_sig = ", r$minsig),
+                             paste0("use_equality = ", r$fpmequality),
+                             paste0("only_most_significant = ", r$fpmonlysig),
+                             "selected_data = nearest_solutions)",
+                             sep = ", <br>"),
+                           sep ="<br>")
 
-        rules <- paste("rules <- SCORER::fpm(df_clustered",
-                       paste0("max_level = ", r$fpmlevel),
-                       paste0("min_sig = ", r$minsig),
-                       paste0("use_equality = ", r$fpmequality),
-                       paste0("only_most_significant = ", r$fpmonlysig),
-                       "selected_data = df_selected$Iteration)",
-                       sep = ", <br>")
+          } else {
+            rules <- paste("rules <- SCORER::fpm(df_clustered",
+                           paste0("max_level = ", r$fpmlevel),
+                           paste0("min_sig = ", r$minsig),
+                           paste0("use_equality = ", r$fpmequality),
+                           paste0("only_most_significant = ", r$fpmonlysig),
+                           "selected_data = df_selected$Iteration)",
+                           sep = ", <br>")
+          }
+        } else {
+          rules <- "# No rules used"
+        }
 
         preamble <- paste0("library(SCORER)<br>",
                            "set.seed(", r$randomseed, ")<br>")

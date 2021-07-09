@@ -166,3 +166,43 @@ create_first_rules <- function(col_name, data, params) {
   col_rule <- col_rule[2:length(col_rule)] # Remove first
   col_rule[seq_along(col_rule) - 1] # Remove last element
 }
+
+#' assign reference point
+#' @param .data data to analyze
+#'
+#' @param reference_point named list of reference points
+#' @param kNN the fraction of neighbouring solutions to include
+#'
+#' @export
+assign_reference_point <- function(.data, reference_point, kNN) {
+  dataset <- .data
+  scaled <- .data %>%
+    dplyr::filter(Rank == 1) %>%
+    dplyr::select(Iteration, names(reference_point)) %>%
+    dplyr::bind_rows(data.frame(Iteration = 99999,
+                                reference_point))
+
+  scaled <- scaled %>%
+    dplyr::mutate(dplyr::across(dataset$objectives,
+                                scales::rescale,
+                                to = c(0, 1)))
+
+  scaled_ref <- scaled %>%
+    dplyr::slice(nrow(.)) %>%
+    dplyr::select(dataset$objectives) %>%
+    as.numeric(.)
+
+  names(scaled_ref) <- names(reference_point)
+
+  selected <- scaled %>%
+    dplyr::filter(Iteration != 99999) %>%
+    dplyr::mutate(
+      dplyr::across(names(scaled_ref),
+                    ~ (.x - scaled_ref[[dplyr::cur_column()]]) ^ 2)) %>%
+    dplyr::mutate(Distance =
+                    sqrt(rowSums(dplyr::across(names(scaled_ref))))) %>%
+    #dplyr::distinct(across(names(reference_point)), .keep_all = TRUE) %>%
+    dplyr::arrange(Distance) %>%
+    head(n = kNN * nrow(.)) %>%
+    dplyr::pull(Iteration)
+}

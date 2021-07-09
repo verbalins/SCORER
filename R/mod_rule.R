@@ -38,7 +38,6 @@ mod_rule_ui <- function(id) {
                                       "Create Rules"),
               )
             ),
-
           ),
           shinydashboard::box(
             width = NULL,
@@ -62,27 +61,14 @@ mod_rule_ui <- function(id) {
               )
             ),
           ),
-
         ),
         shiny::column(9,
-                      shinydashboard::box(width = NULL,
-                          shiny::tabsetPanel(
-                            id = ns("plotTab"),
-                            type = "hidden",
-                            shiny::tabPanelBody(
-                              "ReferencePoint",
-                              plotly::plotlyOutput(ns("refplot"),
-                                                   height = "100%",
-                                                   width = "100%")
-                            ),
-                            shiny::tabPanelBody("Rules",
-                              plotly::plotlyOutput(ns("ruleplot"),
-                                                   height = "100%",
-                                                   width = "100%")
-                            )
-
-                          )
-                      )
+          shinydashboard::box(
+            width = NULL,
+            plotly::plotlyOutput(ns("ruleplot"),
+                                 height = "100%",
+                                 width = "100%")
+          )
         )
       )
     )
@@ -113,15 +99,9 @@ mod_rule_server <- function(id, rval) {
         )
       })
 
-      shiny::observeEvent(input$pointsel, {
-        shiny::updateTabsetPanel(session, "plotTab",
-                                 ifelse(grepl("Reference", input$pointsel),
-                                        "ReferencePoint",
-                                        "Rules"))
-      })
-
       output$fpmapplyrules <- shiny::renderUI({
         if (input$pointsel == "Reference point") {
+
           shiny::tagList(
             shiny::actionButton(ns("fpmrulebutton"),
                                 "Create Rules")
@@ -141,8 +121,16 @@ mod_rule_server <- function(id, rval) {
         if (input$pointsel == "Reference point") {
           shiny::tagList(
             shiny::textInput(ns("referenceValues"),
-                             "Reference point values separated by comma",
-                             "50000, 0.9, 10"),
+                             paste("Reference point values separated by comma",
+                                   paste0("(",
+                                          paste0(rval$filtered_data$objectives,
+                                                 collapse = ", "),
+                                          ")")
+                                   ),
+                             ifelse(is.null(rval$reference_point),
+                                    "50000, 0.9, 10",
+                                    paste0(as.character(unlist(rval$reference_point)),
+                                           collapse = ", "))),
             shiny::numericInput(ns("kNN"), "kNN threshold", 0.2),
             shiny::actionButton(ns("refAssign"), "Assign point")
           )
@@ -152,71 +140,25 @@ mod_rule_server <- function(id, rval) {
       })
 
       shiny::observeEvent(input$refAssign, {
+        # TODO: Implement a better explanation for which parameter is which
         reference_point <- as.list(
-          setNames(as.numeric(stringi::stri_trim(
+          stats::setNames(as.numeric(stringi::stri_trim(
             stringr::str_split(input$referenceValues,
                                ",",
                                simplify = TRUE))),
             rval$filtered_data$objectives))
+
         rval$reference_point <- reference_point
+        rval$kNN <- input$kNN
 
-        scaled <- rval$filtered_data %>%
-          dplyr::filter(Rank == 1) %>%
-          dplyr::select(Iteration, names(reference_point)) %>%
-          dplyr::bind_rows(data.frame(Iteration = 99999, reference_point)) %>%
-          dplyr::mutate(dplyr::across(rval$filtered_data$objectives,
-                                      scales::rescale,
-                                      to = c(0, 1)))
-
-        scaled_ref <- scaled %>%
-          dplyr::slice(nrow(.)) %>%
-          dplyr::select(rval$filtered_data$objectives) %>%
-          as.numeric(.)
-
-        names(scaled_ref) <- names(reference_point)
-
-        selected <- scaled %>%
-          dplyr::filter(Iteration != 99999) %>%
-          dplyr::mutate(
-            dplyr::across(names(scaled_ref),
-                          ~ (.x - scaled_ref[[dplyr::cur_column()]]) ^ 2)) %>%
-          dplyr::mutate(Distance =
-                          sqrt(rowSums(dplyr::across(names(scaled_ref))))) %>%
-          #dplyr::distinct(across(names(reference_point)), .keep_all = TRUE) %>%
-          dplyr::arrange(Distance) %>%
-          head(n = input$kNN * nrow(.)) %>%
-          dplyr::pull(Iteration)
-
+        selected <- SCORER::assign_reference_point(shiny::isolate(rval$filtered_data),
+                                                   reference_point,
+                                                   shiny::isolate(input$kNN))
         rval$selected_data <- selected
-
-        output$refplot <- plotly::renderPlotly({
-          plotly::plot_ly(x = stats::as.formula(paste0("~", rval$plotdims()$x)),
-                          y = stats::as.formula(paste0("~", rval$plotdims()$y)),
-                          z = stats::as.formula(paste0("~", rval$plotdims()$z)),
-                          hoverinfo = "text",
-                          size = 1,
-                          opacity = 1,
-                          height = 800) %>%
-          plotly::add_markers(data = rval$filtered_data %>%
-                                dplyr::filter(!(Iteration %in% selected),
-                                              Rank == 1),
-                              text = ~Iteration,
-                              marker = list(color = I("blue")),
-                              name = "Pareto") %>%
-          plotly::add_markers(data = data.frame(reference_point),
-                              marker = list(color = I("red")),
-                              size = 1.5,
-                              name = "Reference") %>%
-          plotly::add_markers(data = rval$filtered_data %>%
-                                dplyr::filter(Iteration %in% selected),
-                              text = ~Iteration,
-                              size = 1.5,
-                              marker = list(color = I("green")),
-                              name = "kNN")
-        })
       })
 
       shiny::observeEvent(input$fpmrulebutton, {
+        output$FPMruletable <- NULL
 
         if (grepl("Reference", input$pointsel)) {
           sel <- rval$filtered_data %>%
@@ -228,6 +170,8 @@ mod_rule_server <- function(id, rval) {
             dplyr::filter(!(Iteration %in% rval$selected_data)) %>%
             dplyr::select(.$inputs) %>%
             as.data.frame()
+
+          rval$rule_type <- "Reference"
         } else {
           sel <- rval$df_selected()$sel %>%
             dplyr::select(.$inputs) %>%
@@ -238,6 +182,7 @@ mod_rule_server <- function(id, rval) {
             as.data.frame()
 
           rval$selected_data <- rval$df_selected()$sel$Iteration
+          rval$rule_type <- "Manual"
         }
 
         if (input$fpmTab == "RFPM") {
@@ -284,42 +229,37 @@ mod_rule_server <- function(id, rval) {
 
       })
 
-      dt_rules <- function(data) {
-        DT::datatable(data,
-                      options = list(searching = FALSE,
-                                     scrollY = 300,
-                                     scrollCollapse = TRUE,
-                                     scrollX = TRUE),
-                      rownames = FALSE) %>%
-          DT::formatPercentage(columns = c("Significance",
-                                           "Unsignificance",
-                                           "Ratio"),
-                               digits = 2)
-      }
-
       rule_sel <- shiny::reactive({
-        req(input$FPMruletable_rows_selected)
+        #req(input$FPMruletable_rows_selected)
         sel <- rval$filtered_data
+
         if (!is.null(input$FPMruletable_rows_selected)) {
           selected_rows <- input$FPMruletable_rows_selected
           rules_str <- paste(unlist(rval$rules_r[selected_rows, "Rule"]),
                              collapse = " & ")
           sel <- sel %>% dplyr::filter(eval(str2expression(rules_str)))
         }
+
         unsel <- rval$filtered_data %>%
           dplyr::filter(!(Iteration %in% sel$Iteration))
+
         return(list("sel" = sel, "unsel" = unsel))
       })
 
       output$ruleplot <- plotly::renderPlotly({
-        p <- SCORER::plot3d(rule_sel()$sel,
+        shiny::validate(
+          shiny::need(!is.null(rval$plotdims()$x),
+                      "Go to visualization tab first"))
+
+        p <- SCORER::plot3d(.data = rule_sel()$sel,
                             x = rval$plotdims()$x,
                             y = rval$plotdims()$y,
                             z = rval$plotdims()$z,
                             color = rval$plotdims()$color,
                             unselected_data = rule_sel()$unsel,
                             height = 800)
-        if (grepl("Reference", input$pointsel)) {
+        if (grepl("Reference", input$pointsel) &
+            !is.null(rval$reference_point)) {
           p <- p %>%
             plotly::add_markers(data = data.frame(Iteration = 99999,
                                                   Rank = 0,
@@ -328,9 +268,14 @@ mod_rule_server <- function(id, rval) {
                                                   rval$reference_point),
                                 marker = list(color = I("red")),
                                 size = I(40),
-                                name = "Reference")
+                                name = "Reference") %>%
+            plotly::add_markers(data = rval$filtered_data %>%
+                                  dplyr::filter(Iteration %in% rval$selected_data),
+                                text = ~Iteration,
+                                size = 1.5,
+                                marker = list(color = I("green")),
+                                name = "kNN")
         }
-
         p
       })
   })
