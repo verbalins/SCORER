@@ -23,9 +23,9 @@ run_app <- function(
       onStart = onStart,
       enableBookmarking = enableBookmarking,
       uiPattern = uiPattern,
-      options = list(
+      options = append(options, list(
         port = port,
-        maxRequestSize = maxRequestSize)
+        maxRequestSize = maxRequestSize))
     ),
     golem_opts = list(...)
   )

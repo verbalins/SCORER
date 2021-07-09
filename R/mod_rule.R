@@ -194,7 +194,7 @@ mod_rule_server <- function(id, rval) {
                              only_most_significant = input$fpmonlymostsig) %>%
             dplyr::select(Rule, Significance, Unsignificance, Ratio)
 
-          output$FPMruletable <- DT::renderDT(dt_rules(rval$rules_r))
+          output$FPMruletable <- DT::renderDT(SCORER::dt_rules(rval$rules_r))
         } else {
           reticulate::source_python("../py/FPM.py")
 
@@ -209,7 +209,7 @@ mod_rule_server <- function(id, rval) {
                           Unsignificance = UNSEL) %>%
             dplyr::select(Rule, Significance, Unsignificance, Ratio)
 
-          output$Pyruletable <- DT::renderDT(dt_rules(rval$rules_py))
+          output$Pyruletable <- DT::renderDT(SCORER::dt_rules(rval$rules_py))
         }
 
         rval$minsig <- input$minsig

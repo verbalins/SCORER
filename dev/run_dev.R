@@ -8,5 +8,6 @@ golem::detach_all_attached()
 # Document and reload your package
 golem::document_and_reload()
 
+options(shiny.autoreload = TRUE)
 # Run the application
-run_app()
+shiny::runApp()
