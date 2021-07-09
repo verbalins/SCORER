@@ -42,3 +42,6 @@ po/*~
 
 # Python Files
 **/**__pycac*
+
+# Connection files
+rsconnect/

@@ -9,17 +9,19 @@ new_optresult <- function(data, opt_name, opt_id, objectives,
                        inputs = inputs,
                        outputs = outputs,
                        parameters = parameters,
-                       pareto = data %>% dplyr::filter(Rank == 1)))
+                       pareto = data %>% dplyr::filter(dplyr::across("Rank") == 1))
+    )
 }
 
 #' @export
 `$.OptResult` <- function(x, value, ...) {
   #stopifnot(is.OptResult(value))
-  if (value %in% c("objectives", "inputs", "outputs", "parameters", "opt_name", "opt_id", "pareto")) {
-    if (value == "objectives"){
+  if (value %in% c("objectives", "inputs", "outputs",
+                   "parameters", "opt_name", "opt_id", "pareto")) {
+    if (value == "objectives") {
       names(attr(x, value))
-    } else if (value=="pareto"){
-      x %>% dplyr::filter(Rank == 1)
+    } else if (value == "pareto") {
+      x %>% dplyr::filter(dplyr::across("Rank") == 1)
     } else {
       attr(x, value)
     }
@@ -32,8 +34,9 @@ new_optresult <- function(data, opt_name, opt_id, objectives,
 `$<-.OptResult` <- function(x, name, value) {
   #stopifnot(is.OptResult(value))
   #var <- unlist(...)
-  if (name %in% c("objectives", "inputs", "outputs", "parameters", "opt_name", "opt_id")) {
-    if (name =="objectives") {
+  if (name %in% c("objectives", "inputs", "outputs",
+                  "parameters", "opt_name", "opt_id")) {
+    if (name == "objectives") {
       names(attr(x, name)) <- value
     } else {
       attr(x, name) <- value
@@ -57,9 +60,14 @@ new_optresult <- function(data, opt_name, opt_id, objectives,
 #' @export
 #'
 optresult <- function(data, opt_name, opt_id=1, objectives, inputs, outputs, parameters) {
-  new_optresult(data, opt_name = opt_name, opt_id = opt_id, objectives = objectives, inputs = inputs, outputs = outputs, parameters = parameters)
+  new_optresult(data,
+                opt_name = opt_name,
+                opt_id = opt_id,
+                objectives = objectives,
+                inputs = inputs,
+                outputs = outputs,
+                parameters = parameters)
 }
-
 
 #S4 implementation
 #setOldClass(c("tbl_df", "tbl", "data.frame"))

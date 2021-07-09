@@ -20,34 +20,41 @@ Encoding: UTF-8
 LazyData: true
 URL: https://github.com/verbalins/SCORER
 BugReports: https://github.com/verbalins/SCORER/issues
-Depends: R (>= 4.1.0)
+Depends: R (>= 4.1)
 Imports:
-    readr,
-    tidyr,
-    dplyr,
-    tibble,
-    ggplot2,
+    tidyverse,
+    rlang,
     BBmisc,
     ecr,
     plotly,
-    stringr,
     ggtext,
     tikzDevice,
     scales,
-    shiny,
-    shinydashboard,
-    shinycssloaders,
-    shinyjs,
-    collapse,
-    DT,
-    fastcluster,
     foreach,
     doParallel,
-    dbscan,
-    factoextra,
-    Rdpack
+    DT,
+    golem,
+    htmltools,
+    shiny
 RoxygenNote: 7.1.1
 Roxygen: list(markdown = TRUE)
 RdMacros: Rdpack
 Suggests: 
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    config (>= 0.3.1),
+    shinydashboard,
+    shinycssloaders,
+    shinyjs,
+    dbscan,
+    factoextra,
+    cluster,
+    fastcluster,
+    rattle,
+    rpart,
+    rpart.plot,
+    partykit,
+    gtools,
+    attempt,
+    Rdpack,
+    spelling
+Language: en-US

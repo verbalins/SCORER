@@ -1,15 +1,16 @@
+# UI for the import tab
+# Handles:
+# - Data import
+# - Import handling of inputs, outputs, and objectives
+
 mod_import_ui <- function(id) {
   ns <- shiny::NS(id)
   shiny::tagList(
-    # UI for the import tab
-    # Handles:
-    # - Data import
-    # - Import handling of inputs, outputs, and objectives
     shiny::fluidPage(
       shiny::fluidRow(
         # Data selection and import
         shinydashboard::box(title = "Upload data", #width = NULL,
-          shiny::helpText("Select a file exported from OptimizeBrowser, |
+          shiny::helpText("Select a file exported from OptimizeBrowser,
                           or which contains similar headers."),
           shiny::fileInput(ns("fileupload"), "Choose CSV File",
                            multiple = FALSE,
@@ -20,8 +21,8 @@ mod_import_ui <- function(id) {
       ),
       shiny::fluidRow(
         shinydashboard::box(title = "Select Parameters", #width = NULL,
-          shiny::helpText("Select the type of parameters for importing. |
-                          Parameters not selected in either category will |
+          shiny::helpText("Select the type of parameters for importing.
+                          Parameters not selected in either category will
                           be excluded."),
           shiny::uiOutput(ns("data_objectives")),
           shiny::uiOutput(ns("data_inputs")),
@@ -93,34 +94,39 @@ mod_import_server <- function(id, r) {
       })
 
       shiny::observeEvent(input$importData, {
-        if (!is.null(input$fileupload)) {
-          sel <- c(input$data_inputs, input$data_objectives, input$data_outputs)
-          r$data <- r$data %>%
-            dplyr::select("Iteration", dplyr::all_of(sel), "Rank")
-
-          if (input$distancemetric) {
-            r$data <- r$data %>% add_distances(parallel_cores = 10)
-          }
-
-          if (!is.null(input$data_inputs)) {
-            r$data$inputs <- input$data_inputs
-          }
-
-          if (!is.null(input$data_objectives)) {
-            attr(r$data, "objectives") <- attr(r$data, "objectives")[input$data_objectives]
-          }
-
-          if (!is.null(input$data_outputs)) {
-            r$data$outputs <- input$data_outputs
-          } else {
-            r$data$outputs <- r$data$parameters[!(r$data$parameters %in% c(r$data$inputs,r$data$objectives))]
-            shiny::updateSelectInput(session,
-                                     "data_outputs",
-                                     selected = shiny::isolate(unique(r$data$outputs)))
-          }
-
-          r$filtered_data <- r$data
+        if (!is.null(input$data_inputs)) {
+          r$data$inputs <- input$data_inputs
         }
+
+        if (!is.null(input$data_objectives)) {
+          attr(r$data, "objectives") <- attr(r$data, "objectives")[input$data_objectives]
+        }
+
+        if (!is.null(input$data_outputs)) {
+          r$data$outputs <- input$data_outputs
+        } else {
+          r$data$outputs <- r$data$parameters[!(r$data$parameters %in% c(r$data$inputs,
+                                                                         r$data$objectives,
+                                                                         "Rank",
+                                                                         "Iteration",
+                                                                         "Error",
+                                                                         "ConstraintViolation"))]
+          shiny::updateSelectInput(session,
+                                   "data_outputs",
+                                   selected = shiny::isolate(unique(r$data$outputs)))
+        }
+
+        sel <- c(input$data_inputs, input$data_objectives, input$data_outputs)
+        r$data <- r$data %>%
+          dplyr::select("Iteration", dplyr::all_of(sel), dplyr::any_of(c("Rank",
+                                                                       "Cluster",
+                                                                       "Distance")))
+
+        if (input$distancemetric) {
+          r$data <- r$data %>% add_distances(parallel_cores = 10)
+        }
+
+        r$filtered_data <- r$data
       })
     })
 }

@@ -8,10 +8,10 @@
 #   number of clusters
 mod_cluster_ui <- function(id) {
   ns <- shiny::NS(id)
-  shiny::tagList(shiny::fillPage(
+  shiny::tagList(shinyjs::useShinyjs(), shiny::fillPage(
     # Choose the clustering dimensions
     #   Selectinput
-    # Choose the clustering algoritm
+    # Choose the clustering algorithm
     #   kmeans
     #       Number of clusters
     #   clara
@@ -43,7 +43,8 @@ mod_cluster_ui <- function(id) {
           shiny::tabPanel("Hierarchical",
             shiny::radioButtons(ns("hmethod"),
                                 "Method:",
-                                choices = c("hclust", "agnes", "diana"),
+                                #choices = c("hclust", "agnes", "diana"),
+                                choices = c("hclust"),
                                 inline = TRUE),
             shiny::numericInput(ns("numClustHC"),
                                 "Number of clusters:", 5, min = 1, step = 1)
@@ -51,7 +52,9 @@ mod_cluster_ui <- function(id) {
           shiny::tabPanel("Partitioning",
             shiny::radioButtons(ns("clustmethod"),
                                 "Method:",
-                                choices = c("kmeans", "pam", "clara", "fanny"),
+                                # Clara and fanny are difficult to shut down
+                                #choices = c("kmeans", "pam", "clara", "fanny"),
+                                choices = c("kmeans", "pam"),
                                 inline = TRUE),
             shiny::numericInput(ns("numClust"),
                                 "Number of clusters:", 5, min = 1, step = 1)
@@ -61,7 +64,11 @@ mod_cluster_ui <- function(id) {
                                 "Method:",
                                 choices = c("DBSCAN", "OPTICS", "HDBSCAN"),
                                 inline = TRUE),
-            shiny::numericInput(ns("minpts"), "MinPts:", 5, min = 1, step = 1),
+            shiny::numericInput(ns("minpts"),
+                                "MinPts:",
+                                5,
+                                min = 1,
+                                step = 1),
             shiny::numericInput(ns("eps"), "eps:", 0.1, min = 0, step = 0.01),
             shiny::actionButton(ns("eval_clus_perf"), "Evaluate eps")
           ),
@@ -89,7 +96,8 @@ mod_cluster_ui <- function(id) {
 
 cluster_data <- shiny::reactiveValues("data" = list(),
                                       "rpart" = list(),
-                                      "clara" = list(),                                      "kmeans" = list(),
+                                      "clara" = list(),
+                                      "kmeans" = list(),
                                       "hclust" = list(),
                                       "density" = list(),
                                       "saved" = "",
@@ -155,7 +163,6 @@ mod_cluster_server <- function(id, r) {
     })
 
     shiny::observeEvent(input$eval_clus_perf, {
-      browser()
       # Ask to scale data
       cluster_data$data <- r$filtered_data %>%
         dplyr::select(input$cluster_dep, input$cluster_in_dep)
@@ -167,17 +174,27 @@ mod_cluster_server <- function(id, r) {
                                       to = c(0, 1)))
       }
 
-      if (input$clustTab == "dbscan") {
+      if (input$dbmethod == "DBSCAN") {
         output$clusterVizLeft <- shiny::renderPlot({
-          dbscan::kNNdistplot(cluster_data$data, k = input$minpts)
+          dbscan::kNNdistplot(shiny::isolate(cluster_data$data), k = input$minpts)
         })
       }
     })
 
     shiny::observeEvent(input$dbmethod, {
-      shinyjs::toggleState(ns("eps"),
+      if (input$dbmethod == "DBSCAN") {
+        shiny::updateNumericInput(session, "eps",
+                                  label = "eps:",
+                                  max = NULL)
+      } else {
+        shiny::updateNumericInput(session, "eps",
+                                  label = "Xi Threshold:",
+                                  max = 1)
+      }
+
+      shinyjs::toggle("eps",
                            condition = !(input$dbmethod == "HDBSCAN"))
-      shinyjs::toggleState(ns("eval_clus_perf"),
+      shinyjs::toggle("eval_clus_perf",
                            condition = !(input$dbmethod == "HDBSCAN"))
     })
 
@@ -188,16 +205,20 @@ mod_cluster_server <- function(id, r) {
       if (is.null(input$cluster_in_dep)) {
         cluster_data$data <- r$filtered_data %>%
           dplyr::select(input$cluster_dep, r$data$inputs)
+        r$cluster$dep <- input$cluster_dep
       } else {
         cluster_data$data <- r$filtered_data %>%
           dplyr::select(input$cluster_dep, input$cluster_in_dep)
       }
+      r$cluster$indep <- input$cluster_in_dep
 
       if (input$scale_dep) {
         cluster_data$data <- cluster_data$data %>%
           dplyr::mutate(dplyr::across(input$cluster_dep,
                                       scales::rescale,
                                       to = c(0, 1)))
+
+        r$cluster$scale <- input$scale_dep
       }
 
       if (input$clustTab == "Partitioning" ||
@@ -206,7 +227,9 @@ mod_cluster_server <- function(id, r) {
         if (input$clustTab == "Partitioning") {
           clust_method <- switch(input$clustmethod,
                                  "kmeans" = kmeans,
-                                 "clara" = cluster::clara
+                                 "pam" = cluster::pam,
+                                 "clara" = cluster::clara,
+                                 "fanny" = cluster::fanny
                                  )
         } else {
           clust_method <- switch(input$hmethod,
@@ -223,7 +246,8 @@ mod_cluster_server <- function(id, r) {
             method = "silhouette"
           )
 
-          k_val <- as.numeric(dplyr::arrange(cluster.suggestion$data, desc(y))[1, 1])
+          k_val <- as.numeric(dplyr::arrange(cluster.suggestion$data,
+                                             dplyr::desc(y))[1, 1])
 
           output$clusterVizRight <- shiny::renderPlot({
             factoextra::fviz_cluster(
@@ -246,10 +270,17 @@ mod_cluster_server <- function(id, r) {
           indep <- input$cluster_in_dep
         }
 
-        form <- as.formula(paste(
-            paste(input$cluster_dep, collapse = "+"), " ~ ",
-            paste(indep, collapse = "+"),
-            collapse = " "))
+        r$cluster$method <- "rpart::rpart"
+        r$cluster$form <- paste(
+          paste(input$cluster_dep, collapse = " + "), " ~ ",
+          paste(indep, collapse = " + "),
+          collapse = " ")
+        form <- as.formula(r$cluster$form)
+        r$cluster$params <- paste0("model = TRUE, control = ", paste0("rpart::rpart.control(cp = ",
+                                                    input$cp,
+                                                    ", maxdepth = ",
+                                                    input$maxdepth,
+                                                    ")"))
 
         rprt <- rpart::rpart(
             form,
@@ -269,27 +300,36 @@ mod_cluster_server <- function(id, r) {
         # DBSCAN
         db_method <- input$dbmethod
         if (db_method == "DBSCAN") {
-          res <- dbscan::dbscan(cluster_data$data, eps = input$eps, minPts = input$minpts)
+          res <- dbscan::dbscan(cluster_data$data,
+                                eps = input$eps,
+                                minPts = input$minpts)
+          r$cluster$method <- "dbscan::dbscan"
+          r$cluster$params <- paste0("eps = ", input$eps, ", minPts = ", input$minpts)
         } else if (db_method == "OPTICS") {
           res <- dbscan::optics(cluster_data$data, minPts = input$minpts)
-          res <- dbscan::extractXi(res, xi = input$eps)
+          # TODO: Create validation for this condition
+          if (dplyr::between(input$eps, 0, 1)) {
+            res <- dbscan::extractXi(res, xi = input$eps)
+          } else {
+            res <- dbscan::extractXi(res, xi = 0.9)
+          }
+          r$cluster$method <- "dbscan::optics"
+          r$cluster$params <- paste0("minPts = ", input$minpts)
+          r$cluster$params2 <- paste0("xi = ", input$eps)
         } else {
-          diss <- cluster::daisy(cluster_data$data,
-                                 metric = "gower")
           res <- dbscan::hdbscan(cluster_data$data,
-                                 xdist = diss,
                                  minPts = input$minpts)
+          r$cluster$method <- "dbscan::hdbscan"
+          r$cluster$params <- paste0("minPts = ", input$minpts)
         }
-
         cluster_data$density <- res$cluster
 
         output$clusterVizRight <- shiny::renderPlot({
           ggplot2::ggplot(
             as.data.frame(cluster_data$data),
-            ggplot2::aes_string(input$cluster_dep[1], input$cluster_dep[2])
-          ) +
-            ggplot2::geom_point(ggplot2::aes(color = res$cluster)) +
-            ggplot2::scale_color_viridis_c()
+            ggplot2::aes_string(input$cluster_dep[1], input$cluster_dep[2])) +
+          ggplot2::geom_point(ggplot2::aes(color = res$cluster)) +
+          ggplot2::scale_color_viridis_c()
         })
       }
       # Send output to renderText("clusterText")
@@ -301,63 +341,74 @@ mod_cluster_server <- function(id, r) {
       #c("kmeans","pam","clara","fanny")
       if (input$clustTab == "Hierarchical") {
         if (input$hmethod == "hclust") {
-          h.res <- fastcluster::hclust.vector(as.data.frame(cluster_data$data), method = "ward")
+          h.res <- fastcluster::hclust.vector(as.data.frame(cluster_data$data),
+                                              method = "ward")
           res <- cutree(h.res, k = input$numClustHC)
           clust <- res
+          r$cluster$method <- "fastcluster::hclust.vector"
+          r$cluster$params <- "method = 'ward'"
+          r$cluster$params2 <- paste0("k = ", input$numClustHC)
         } else if (input$hmethod == "agnes") {
           res  <-
             cluster::agnes(
-              cluster::daisy(as.data.frame(cluster_data$data), metric = "gower"),
+              cluster::daisy(as.data.frame(cluster_data$data),
+                             metric = "gower",
+                             stand = TRUE),
               stand = TRUE,
               method = "ward",
               keep.diss = FALSE,
               keep.data = FALSE
             )
+          clust <- res
         } else if (input$hmethod == "diana") {
-
-        }
-      } else if (input$clustTab == "Partitioning") {
-        if (input$clustmethod == "kmeans") {
-          cluster_data$kmeans <-
-            kmeans(
-              cluster_data$data %>% dplyr::select(input$cluster_dep),
-              centers = input$numClust
-            )
-          clust <- cluster_data$kmeans$cluster
-        } else if (input$clustmethod == "pam") {
-          clust <-
-            cluster::pam(
-              cluster_data$data,
-              k = input$numClust,
-              pamonce = 5,
-              cluster.only = TRUE
-            )
-        } else if (input$clustmethod == "clara") {
-          cluster_data$clara <-
-            cluster::clara(
-              cluster_data$data,
-              k = input$numClust,
-              samples = 500,
-              pamLike = TRUE,
-              medoids.x = FALSE,
-              keep.data = FALSE
-            )
-          clust <- cluster_data$clara$clustering
-        } else if (input$clustmethod == "fanny") {
-          clust <-
-            cluster::fanny(
-              cluster_data$data,
-              k = input$numClust,
-              cluster.only = TRUE,
+          res  <-
+            cluster::diana(
+              cluster::daisy(as.data.frame(cluster_data$data),
+                             metric = "gower",
+                             stand = TRUE),
+              stand = TRUE,
+              method = "ward",
               keep.diss = FALSE,
               keep.data = FALSE
             )
+          clust <- res
+        }
+      } else if (input$clustTab == "Partitioning") {
+        if (input$clustmethod == "kmeans") {
+          cluster_data$kmeans <- stats::kmeans(cluster_data$data %>%
+                                          dplyr::select(input$cluster_dep),
+                                        centers = input$numClust)
+          clust <- cluster_data$kmeans$cluster
+          r$cluster$method <- "stats::kmeans"
+          r$cluster$params <- paste0("centers = ", input$numClust)
+        } else if (input$clustmethod == "pam") {
+          clust <- cluster::pam(cluster_data$data,
+                                k = input$numClust,
+                                pamonce = 5,
+                                cluster.only = TRUE)
+          r$cluster$method <- "cluster::pam"
+          r$cluster$params <- paste0("k = ", input$numClust,
+                                   ", pamonce = 5, cluster.only = TRUE")
+        } else if (input$clustmethod == "clara") {
+          cluster_data$clara <-
+            cluster::clara(cluster_data$data,
+                           k = input$numClust,
+                           samples = 500,
+                           pamLike = TRUE,
+                           medoids.x = FALSE,
+                           keep.data = FALSE)
+          clust <- cluster_data$clara$clustering
+        } else if (input$clustmethod == "fanny") {
+          clust <- cluster::fanny(cluster_data$data,
+                                  k = input$numClust,
+                                  cluster.only = TRUE,
+                                  keep.diss = FALSE,
+                                  keep.data = FALSE)
         }
       } else if (input$clustTab == "Decision Trees") {
+        r$cluster$method = "rpart::rpart"
         # Use input$numClust to prune the tree approximately to the number of clusters
         tree_party <- partykit::as.party(cluster_data$rpart)
-        #tree_fit <- fitted(tree_party)
-        #clust <- predict(tree_party, newdata = cluster_data$rpart$model, type = "node")
         tree_pred <- predict(tree_party, type = "node")
         clust <- as.numeric(
           forcats::fct_recode(factor(tree_pred),
@@ -369,7 +420,8 @@ mod_cluster_server <- function(id, r) {
       }
       # Save selected values from cluster_dep
       cluster_data$cluster <- clust
-      r$filtered_data <- r$filtered_data %>% dplyr::mutate(Cluster = cluster_data$cluster)
+      r$filtered_data <- r$filtered_data %>%
+        dplyr::mutate(Cluster = cluster_data$cluster)
 
       cluster_data$saved <- input$clustTab
 
