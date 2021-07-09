@@ -38,6 +38,7 @@ mod_filter_server <- function(id, r) {
                       filter = "top",
                       options = list(scrollX = TRUE,
                                      scrollY = 600,
+                                     scrollCollapse = TRUE,
                                      pageLength = 50),
                       rownames = FALSE)
       })
