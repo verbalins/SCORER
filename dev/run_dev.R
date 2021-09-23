@@ -1,5 +1,5 @@
 # Set options here
-options(golem.app.prod = FALSE) # TRUE = production mode, FALSE = development mode
+options(golem.app_prod = FALSE) # TRUE = production mode, FALSE = development mode
 
 # Detach all loaded packages and clean your environment
 golem::detach_all_attached()
@@ -10,4 +10,4 @@ golem::document_and_reload()
 
 options(shiny.autoreload = TRUE)
 # Run the application
-shiny::runApp()
+run_app()

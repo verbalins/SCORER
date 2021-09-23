@@ -1,8 +1,8 @@
 default:
   golem_name: SCORER
   golem_version: 0.0.0.9000
-  app_prod: no
+  app_prod: FALSE
 production:
-  app_prod: yes
+  app_prod: TRUE
 dev:
   golem_wd: /home/verbalins/Doktorand/Packages/SCORER

@@ -23,7 +23,7 @@ app_server <- function(input, output, session) {
     }
     r$data <- df
     r$filtered_data <- df
-  } else if (get_golem_config("app_prod")  == "no") {
+  } else if (get_golem_config("app_prod")  == "FALSE") {
     # Pre-load for development
     r$data  <- SCORER::FMC
     r$filtered_data <- SCORER::FMC

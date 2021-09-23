@@ -164,8 +164,25 @@ plot3d <- function(.data, x, y, z, color, unselected_data = NULL, ...) {
   }
 }
 
-plotnd <- function(.data, dimensions, ...) {
+#' @export
+plotnd <- function(.data, ...) {
+  arguments <- match.call(expand.dots = TRUE)
+  for (argname in c("x", "y", "z", "color")) # Arguments needed
+    if (!is.null(Call[[argname]]))
 
+
+  if (length(.data$objectives) <= 2) {
+    SCORER::plot2d(.data,
+                   x = .data$objectives[1],
+                   y = .data$objectives[2],
+                   color = )
+  } else {
+    SCORER::plot3d(.data,
+                   x = .data$objectives[1],
+                   y = .data$objectives[2],
+                   z = .data$objectives[3],
+                   color = )
+  }
 }
 
 addunselected <- function(.plot, unselected_data) {
