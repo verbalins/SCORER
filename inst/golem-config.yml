@@ -1,8 +1,8 @@
 default:
   golem_name: SCORER
   golem_version: 0.0.0.9000
-  app_prod: FALSE
+  app_prod: no
 production:
-  app_prod: TRUE
+  app_prod: yes
 dev:
-  golem_wd: /home/verbalins/Doktorand/Packages/SCORER
+  golem_wd: !expr here::here()

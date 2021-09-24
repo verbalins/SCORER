@@ -23,7 +23,7 @@ app_server <- function(input, output, session) {
     }
     r$data <- df
     r$filtered_data <- df
-  } else if (get_golem_config("app_prod")  == "FALSE") {
+  } else if (golem::app_dev()) {
     # Pre-load for development
     r$data  <- SCORER::FMC
     r$filtered_data <- SCORER::FMC
@@ -53,4 +53,8 @@ app_server <- function(input, output, session) {
 
   ### Data export logic --------------------------------------------
   mod_export_server("export", r)
+
+  if (golem::app_dev()) {
+    session$onSessionEnded(stopApp)
+  }
 }
