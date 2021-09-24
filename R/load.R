@@ -14,8 +14,9 @@ loaddataset <- function(filename,
                         outputs = NULL,
                         custom_outputs = NULL) {
 
-  opt_info <- readr::read_lines(filename, skip_empty_rows = T) %>%
+  opt_info <- readr::read_lines(filename, skip_empty_rows = TRUE) %>%
     stringr::str_replace_all("[\r\n]", "") %>%
+    stringr::str_replace_all(";$", "") %>% # Remove last delimiter if present
     stringr::str_replace_all(",", ".")
 
   cust_locale <- readr::locale(decimal_mark = ".")
@@ -42,11 +43,7 @@ loaddataset <- function(filename,
     dplyr::pull(2)
 
   opt_parameters <- colnames(opt) %>%
-    stringr::str_remove_all(pattern = c("Iteration",
-                                        "Rank",
-                                        "ConstraintViolation",
-                                        "Replications",
-                                        "Error")) %>%
+    stringr::str_remove_all(pattern = "Iteration|Rank|ConstraintViolation|Replications|Error") %>%
     .[. != ""]
 
   opt_objectives <- opt_info %>%

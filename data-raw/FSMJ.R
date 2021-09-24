@@ -10,7 +10,7 @@ FSMJ <- SCORER::loaddataset("inst/extdata/FSMJ.csv", inputs = inputs, outputs = 
 usethis::use_data(FSMJ, compress="xz", overwrite = TRUE)
 
 FSMJ_dist <- FSMJ %>%
-  addDistances(parallelCores = 10)
+  add_distances(parallel_cores = 10)
 
 usethis::use_data(FSMJ_dist, compress="xz", overwrite = TRUE)
 
