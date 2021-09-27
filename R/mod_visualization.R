@@ -249,8 +249,7 @@ mod_visualization_server <- function(id, r) {
           local({
             my_i <- i
             plotname <- paste0("plot", my_i) # Don't use ns here
-            #x = stats::formula(paste0("~", dim_list()$Objectives[[1]])),
-            #y = stats::formula(paste0("~", dim_list()$Objectives[[my_i + 1]])),
+
             output[[plotname]] <- plotly::renderPlotly({
               SCORER::plot2d(r$df_selected()$sel,
                              r$df_selected()$sel$objectives[[1]],

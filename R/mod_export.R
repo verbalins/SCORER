@@ -164,7 +164,7 @@ mod_export_server <- function(id, r) {
         } else {
           selected_data <- paste0("# Selection from the visualizaton tab. <br>",
                                   "df_selected <- df_clustered %>% <br>",
-                                  "dplyr::filter(Iteration %in%",
+                                  "dplyr::filter(Iteration %in% ",
                                   paste0("c(",
                                          paste0(r$df_selected()$sel$Iteration,
                                                 collapse = ", "),
