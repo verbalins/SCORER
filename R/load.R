@@ -8,7 +8,7 @@
 #' @param custom_outputs A character vector describing custom outputs
 #'
 #' @return A dataframe with the data
-loaddataset <- function(filename,
+load_dataset <- function(filename,
                         objectives = NULL,
                         inputs = NULL,
                         outputs = NULL,

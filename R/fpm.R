@@ -5,10 +5,10 @@
 #'
 #' Flexible pattern mining \insertCite{Bandaru2017b}{SCORER} implemented in R().
 #'
-#' @param .data Data input, obtained using [SCORER::loaddataset()]
+#' @param .data Data input, obtained using [load_dataset()]
 #' @param selected_data The selected solutions, either a vector of iterations or a named
 #' list of objectives and their values
-#' @param unselected_data The rest of the solutions not in [selected_data]
+#' @param unselected_data The rest of the solutions not in selected_data
 #' @param max_level The maximum level of rules to be returned, default 1
 #' @param min_sig Minimum significance a rule will have to meet to be included
 #' @param use_equality Include rules such as x == 1?

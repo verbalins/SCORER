@@ -1,6 +1,6 @@
 #' Creates a frequency chart from the supplied data set
 #'
-#' @param .data The data, preferably loaded from [loaddataset()]
+#' @param .data The data, preferably loaded from [load_dataset()]
 #' @param objectives Which objectives to use, defaults to all
 #' @param rank The rank of the included solutions, inclusive
 #' @param n The number of bottlenecks to include
@@ -63,13 +63,13 @@ freqchart <-
 #' Creates a 2D plot to visualize the optimization results
 #'
 #' @export
-#' @param data A dataset loaded with [loaddataset()], and has ranks applied through [ndsecr()]
+#' @param data A dataset loaded with [load_dataset()], and has ranks applied through [ndsecr()]
 #' @param objectives A character vector indicating the objectives to show, defaults to first two objectives
 #' @return A ggplot2 object showing the fronts of the optimization
 #' @importFrom stats as.formula
 #' @importFrom dplyr filter select arrange if_else vars distinct_at
 #' @importFrom ggplot2 ggplot geom_point geom_text geom_line scale_y_continuous theme_classic element_text
-plotPareto <- function(.data, objectives = names(attr(.data, "objectives")), interactive = FALSE) {
+plot_pareto <- function(.data, objectives = names(attr(.data, "objectives")), interactive = FALSE) {
     labelnames <- c("Improvements", "Output", "Lead Time")
     names(labelnames) <- c("minImp", "maxOut", "minLT")
 
@@ -150,7 +150,7 @@ plotPareto <- function(.data, objectives = names(attr(.data, "objectives")), int
   }
 }
 
-#' Exports a plot created by [freqchart()] or [plotPareto()]
+#' Exports a plot created by [freqchart()] or [plot_pareto()]
 #'
 #' @export
 #' @param filename The name of the resulting file
@@ -158,7 +158,7 @@ plotPareto <- function(.data, objectives = names(attr(.data, "objectives")), int
 #' @importFrom ggplot2 ggsave last_plot
 #' @importFrom tikzDevice tikz
 #' @importFrom grDevices dev.off
-exportPlot <-
+export_plot <-
   function(.plot = ggplot2::last_plot(),
            filename,
            path = getwd(),

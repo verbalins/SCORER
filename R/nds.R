@@ -20,7 +20,7 @@ ndsecr <- function(.data, objectives = attr(.data, "objectives")) {
   }
   cat("Performing NDS with objectives:", "\n", names(objectives), "\n")
   limits <- sapply(.data[, names(objectives)], function(x) {c(min(x), max(x))})
-  normalizedData <- normalizeValues(.data[, names(objectives)], objectives)
+  normalizedData <- normalize_values(.data[, names(objectives)], objectives)
   optData <- as.matrix(normalizedData)
 
   if ("Rank" %in% names(.data)) {
@@ -44,7 +44,7 @@ ndsecr <- function(.data, objectives = attr(.data, "objectives")) {
 #' @param limits Named character vector with min and max values for each objective
 #'
 #' @return Normalized values
-normalizeValues <- function(.data,
+normalize_values <- function(.data,
                             objectives = attr(.data, "objectives"),
                             limits = NULL) {
   # Make sure that the values are normalized and

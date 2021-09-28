@@ -12,7 +12,7 @@ freqchart(
 )
 }
 \arguments{
-\item{.data}{The data, preferably loaded from \code{\link[=loaddataset]{loaddataset()}}}
+\item{.data}{The data, preferably loaded from \code{\link[=load_dataset]{load_dataset()}}}
 
 \item{objectives}{Which objectives to use, defaults to all}
 

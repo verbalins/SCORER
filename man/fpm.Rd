@@ -15,12 +15,12 @@ fpm(
 )
 }
 \arguments{
-\item{.data}{Data input, obtained using \code{\link[=loaddataset]{loaddataset()}}}
+\item{.data}{Data input, obtained using \code{\link[=load_dataset]{load_dataset()}}}
 
 \item{selected_data}{The selected solutions, either a vector of iterations or a named
 list of objectives and their values}
 
-\item{unselected_data}{The rest of the solutions not in \link{selected_data}}
+\item{unselected_data}{The rest of the solutions not in selected_data}
 
 \item{max_level}{The maximum level of rules to be returned, default 1}
 
