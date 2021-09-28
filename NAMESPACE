@@ -2,6 +2,7 @@
 
 S3method("$",OptResult)
 S3method("$<-",OptResult)
+export(addDistances)
 export(exportPlot)
 export(fpm)
 export(freqchart)

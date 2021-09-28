@@ -6,19 +6,31 @@
 \usage{
 fpm(
   .data,
-  maxLevel = 1,
-  minSig = 0.5,
   selectedData,
   unselectedData = NULL,
+  maxLevel = 1,
+  minSig = 0.5,
   useEquality = TRUE,
   onlyMostSignificant = TRUE
 )
 }
 \arguments{
 \item{.data}{Data input, obtained using \code{\link[=loaddataset]{loaddataset()}}}
+
+\item{selectedData}{The selected solutions, either a vector of iterations or a named list of objectives and their values}
+
+\item{unselectedData}{The non-selected solutions, when NULL, automatically uses the remaining solutions not in selectedData}
+
+\item{maxLevel}{The level of rules to obtain, i.e. compound rule level, defaults to 1}
+
+\item{minSig}{Minimum significance of rule to be considered valuable}
+
+\item{useEquality}{Find rules which are exactly equal to their value}
+
+\item{onlyMostSignificant}{Only the most significant rules are considered, not implemented}
 }
 \value{
-A list of lists where each combination of itemsets are considered
+A data frame containing the rules with its significance, unsignificance, and ratio.
 }
 \description{
 Flexible pattern mining in R(), returns rules to reach certain areas in the objectives space

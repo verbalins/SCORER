@@ -19,7 +19,7 @@ loaddataset(
 
 \item{inputs}{A character vector naming the inputs}
 
-\item{outputs}{A character vector naming the ouputs}
+\item{outputs}{A character vector naming the outputs}
 
 \item{custom_outputs}{A character vector describing custom outputs}
 }
