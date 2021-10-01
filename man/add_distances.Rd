@@ -11,7 +11,7 @@ add_distances(.data, pareto_solutions = NULL, parallel_cores = 0)
 
 \item{pareto_solutions}{Iteration number to use as interpolant, default NULL}
 
-\item{parallel_cores}{Number of cores to use for calculation. Default 0, a positive value will enable parallelization.}
+\item{parallel_cores}{Number of cores to use for calculation. Default is 0, supply a positive integer to enable parallelization.}
 }
 \description{
 Apply the distance-based metric, with a new column Distance

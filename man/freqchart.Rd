@@ -4,12 +4,7 @@
 \alias{freqchart}
 \title{Creates a frequency chart from the supplied data set}
 \usage{
-freqchart(
-  .data,
-  objectives = names(attr(.data, "objectives")),
-  rank = 1,
-  n = 10
-)
+freqchart(.data, objectives = .data$objective_names, rank = 1, n = 10)
 }
 \arguments{
 \item{.data}{The data, preferably loaded from \code{\link[=load_dataset]{load_dataset()}}}

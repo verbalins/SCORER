@@ -4,12 +4,12 @@
 \alias{normalize_values}
 \title{Normalize values in the optimization data.}
 \usage{
-normalize_values(.data, objectives = attr(.data, "objectives"), limits = NULL)
+normalize_values(.data, objectives = .data$objective_names, limits = NULL)
 }
 \arguments{
 \item{.data}{an OptResults class}
 
-\item{objectives}{Optimization goals}
+\item{objectives}{Optimization goals, named}
 
 \item{limits}{Named character vector with min and max values for each objective}
 }

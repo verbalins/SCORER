@@ -2,7 +2,7 @@
 % Please edit documentation in R/SCOREr.R
 \name{optresult}
 \alias{optresult}
-\title{Title}
+\title{An S3 class representing the optimization result, usually returned from \code{\link[=load_dataset]{load_dataset()}}}
 \usage{
 optresult(data, opt_name, opt_id = 1, objectives, inputs, outputs, parameters)
 }
@@ -23,5 +23,5 @@ optresult(data, opt_name, opt_id = 1, objectives, inputs, outputs, parameters)
 An S3 class
 }
 \description{
-Title
+An S3 class representing the optimization result, usually returned from \code{\link[=load_dataset]{load_dataset()}}
 }

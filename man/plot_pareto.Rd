@@ -4,11 +4,7 @@
 \alias{plot_pareto}
 \title{Creates a 2D plot to visualize the optimization results}
 \usage{
-plot_pareto(
-  .data,
-  objectives = names(attr(.data, "objectives")),
-  interactive = FALSE
-)
+plot_pareto(.data, objectives = .data$objective_names, interactive = FALSE)
 }
 \arguments{
 \item{objectives}{A character vector indicating the objectives to show, defaults to first two objectives}

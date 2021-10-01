@@ -4,7 +4,7 @@
 \alias{ndsecr}
 \title{Perform non-dominated sorting}
 \usage{
-ndsecr(.data, objectives = attr(.data, "objectives"))
+ndsecr(.data, objectives = .data$objectives)
 }
 \arguments{
 \item{objectives}{objectives from optresults or an character/numeric vector

@@ -17,7 +17,7 @@ app_server <- function(input, output, session) {
   # React for parameters to [SCORER::run_app]
   if (!is.null(golem::get_golem_options("dataset"))) {
     if (is.character(golem::get_golem_options("dataset"))) {
-      df <- SCORER::loaddataset(golem::get_golem_options("dataset"))
+      df <- SCORER::load_dataset(golem::get_golem_options("dataset"))
     } else {
       df <- golem::get_golem_options("dataset")
     }

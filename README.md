@@ -33,7 +33,7 @@ SCORER::run_app()
 
 # To pre-populate the browser with a dataset, 
 # use the dataset parameter with data imported by
-# the loaddataset function.
-# df <- SCORER::loaddataset("datafile.csv")
+# the load_dataset function.
+# df <- SCORER::load_dataset("datafile.csv")
 # SCORER::run_app(dataset=df)
 ```

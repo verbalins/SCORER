@@ -5,7 +5,7 @@ inputs <- c("Shift","safety_A1","safety_A2","safety_A3","safety_A4",
               "safety_D1","safety_D2","safety_D3","safety_D4",
               "batch_C1","batch_C2","batch_C3","batch_C4")
 outputs <- c("WaitingParts","WIP_A","WIP_B","WIP_C","WIP_D","WIP_AA","WIP_FA","LT_A","LT_B","LT_C","LT_D","LT_AA","LT_FA","Out","LT_Plant","LeanBuffer")
-FSMJ <- SCORER::loaddataset("inst/extdata/FSMJ.csv", inputs = inputs, outputs = outputs)
+FSMJ <- SCORER::load_dataset("inst/extdata/FSMJ.csv", inputs = inputs, outputs = outputs)
 
 usethis::use_data(FSMJ, compress="xz", overwrite = TRUE)
 
@@ -15,6 +15,6 @@ FSMJ_dist <- FSMJ %>%
 usethis::use_data(FSMJ_dist, compress="xz", overwrite = TRUE)
 
 FSMJ_clusters <- FSMJ_dist %>%
-  partitioning(nrClusters = 6, parameters = c("Distance",names(attr(.,"objectives"))))
+  partitioning(nrClusters = 6, parameters = c("Distance", .$objectives))
 
 usethis::use_data(FSMJ_clusters, compress="xz", overwrite = TRUE)
