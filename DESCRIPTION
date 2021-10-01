@@ -35,7 +35,8 @@ Imports:
     DT,
     golem,
     htmltools,
-    shiny
+    shiny,
+    sloop (>= 1.0.1)
 RoxygenNote: 7.1.1
 Roxygen: list(markdown = TRUE)
 RdMacros: Rdpack
@@ -58,3 +59,5 @@ Suggests:
     Rdpack,
     spelling
 Language: en-US
+Remotes:  
+    r-lib/sloop
