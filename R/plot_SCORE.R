@@ -12,13 +12,14 @@
 #' @importFrom ggtext geom_richtext
 freqchart <-
   function(.data,
-           objectives = names(attr(.data, "objectives")),
+           objectives = .data$objective_names,
            rank = 1,
            n = 10) {
+
     filtered <- .data %>%
       dplyr::filter(Rank <= rank) %>%
       dplyr::distinct_at(dplyr::vars(objectives,
-                                     attr(., "inputs"),
+                                     .$inputs,
                                      Rank),
                          .keep_all = T) %>% # Always unique solutions to a SCORE problem.
       dplyr::select_at(dplyr::vars(dplyr::starts_with("imp")), function(x)
@@ -69,7 +70,7 @@ freqchart <-
 #' @importFrom stats as.formula
 #' @importFrom dplyr filter select arrange if_else vars distinct_at
 #' @importFrom ggplot2 ggplot geom_point geom_text geom_line scale_y_continuous theme_classic element_text
-plot_pareto <- function(.data, objectives = names(attr(.data, "objectives")), interactive = FALSE) {
+plot_pareto <- function(.data, objectives = .data$objective_names, interactive = FALSE) {
     labelnames <- c("Improvements", "Output", "Lead Time")
     names(labelnames) <- c("minImp", "maxOut", "minLT")
 
@@ -90,7 +91,7 @@ plot_pareto <- function(.data, objectives = names(attr(.data, "objectives")), in
             ),
             name = "Rank 1-5"
           )
-        if (length(attr(.data, "objectives")) == 2) {
+        if (length(objectives) == 2) {
           p <- p %>% plotly::add_trace(
             data = .data %>%
               dplyr::filter(Rank == 1) %>%
@@ -123,7 +124,7 @@ plot_pareto <- function(.data, objectives = names(attr(.data, "objectives")), in
   } else {
     chart <- .data %>%
       dplyr::distinct_at(dplyr::vars(all_of(objectives),
-                                     attr(., "inputs"),
+                                     .$inputs,
                                      Rank),
                          .keep_all = T) %>% # Always unique solutions to a SCORE problem.
       ggplot2::ggplot(ggplot2::aes_string(

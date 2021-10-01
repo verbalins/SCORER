@@ -124,7 +124,7 @@ mod_cluster_server <- function(id, r) {
     })
 
     dim_list <- shiny::reactive({
-      list("Objectives" = as.list(unique(r$filtered_data$objectives)),
+      list("Objectives" = as.list(unique(r$filtered_data$objective_names)),
            "Inputs" = as.list(unique(r$filtered_data$inputs)),
            "Outputs" = as.list(unique(r$filtered_data$outputs)),
            "Filter" = as.list(unique(grep("Rank|Distance|Cluster",

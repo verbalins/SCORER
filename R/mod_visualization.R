@@ -40,7 +40,7 @@ mod_visualization_server <- function(id, r) {
       ns <- session$ns
 
       dim_list <- shiny::reactive({
-        list(Objectives = unique(r$filtered_data$objectives),
+        list(Objectives = unique(r$filtered_data$objective_names),
              Inputs = unique(r$filtered_data$inputs),
              Outputs = unique(r$filtered_data$outputs),
              Filter = unique(grep("Rank|Distance|Cluster",
@@ -220,13 +220,13 @@ mod_visualization_server <- function(id, r) {
       output$plots2d <- shiny::renderUI({
         ns <- session$ns
         plot_output_list <- lapply(
-          seq(1:(length(shiny::isolate(r$filtered_data$objectives)) - 1)),
+          seq(1:(length(shiny::isolate(r$filtered_data$objective_names)) - 1)),
           function(i) {
             plotname <- paste0("plot", i)
             plotly::plotlyOutput(
               ns(plotname), # ns because it's a plotlyOutput
               width = paste0(
-                floor((1 / (length(r$filtered_data$objectives) - 1)) * 100) - 1,
+                floor((1 / (length(r$filtered_data$objective_names) - 1)) * 100) - 1,
                 "%"),
               inline = TRUE, height = "100%")
           })
@@ -241,7 +241,7 @@ mod_visualization_server <- function(id, r) {
       shiny::observeEvent({r$filtered_data}, {
         ranges$data <- NULL
         selected_points$data <- NULL
-        max_plots <- shiny::isolate(length(r$filtered_data$objectives))
+        max_plots <- shiny::isolate(length(r$filtered_data$objective_names))
         for (i in seq(1:(max_plots - 1))) {
           # Need local so that each item gets its own number. Without it,
           # the value of i in the renderPlot() will be the same across all
@@ -252,8 +252,8 @@ mod_visualization_server <- function(id, r) {
 
             output[[plotname]] <- plotly::renderPlotly({
               SCORER::plot2d(r$df_selected()$sel,
-                             r$df_selected()$sel$objectives[[1]],
-                             r$df_selected()$sel$objectives[[my_i + 1]],
+                             r$df_selected()$sel$objective_names[[1]],
+                             r$df_selected()$sel$objective_names[[my_i + 1]],
                              input$color,
                              r$df_selected()$unsel,
                              source = plotname) %>%
@@ -266,7 +266,7 @@ mod_visualization_server <- function(id, r) {
       })
 
       lapply(
-        paste0("plot", seq(1, shiny::isolate(length(r$filtered_data$objectives)) - 1)),
+        paste0("plot", seq(1, shiny::isolate(length(r$filtered_data$objective_names)) - 1)),
         function(nm) {
           shiny::observeEvent(plotly::event_data("plotly_selected",
                                                  source = nm), {

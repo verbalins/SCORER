@@ -1,29 +1,31 @@
-#S3 implementation
-new_optresult <- function(data, opt_name, opt_id, objectives,
-                          inputs, outputs, parameters) {
-  tibble::validate_tibble(
-    tibble::new_tibble(data, class = "OptResult",
-                       opt_name = opt_name,
-                       opt_id = opt_id,
-                       objectives = objectives,
-                       inputs = inputs,
-                       outputs = outputs,
-                       parameters = parameters,
-                       pareto = data %>% dplyr::filter(dplyr::across("Rank") == 1))
-    )
+# S3 Implementation
+new_optresult <- function(data = tibble::tibble(),
+                          metadata = list(),
+                          ..., class = character()) {
+
+  stopifnot(tibble::is_tibble(data))
+
+  tibble::new_tibble(data,
+                     nrow = nrow(data),
+                     metadata = metadata,
+                     class = c(class, "OptResult"),
+                     ...)
 }
 
 #' @export
 `$.OptResult` <- function(x, value, ...) {
   #stopifnot(is.OptResult(value))
-  if (value %in% c("objectives", "inputs", "outputs",
-                   "parameters", "opt_name", "opt_id", "pareto")) {
-    if (value == "objectives") {
-      names(attr(x, value))
+  if (value %in% c("objectives", "objective_names", "inputs", "outputs",
+                   "parameters", "opt_name", "opt_id",
+                   "pareto", "metadata")) {
+    if (value == "objective_names") {
+      names(attr(x, "metadata")[["objectives"]])
     } else if (value == "pareto") {
       x %>% dplyr::filter(dplyr::across("Rank") == 1)
-    } else {
+    } else if (value == "metadata") {
       attr(x, value)
+    } else {
+      attr(x, "metadata")[[value]]
     }
   } else {
     NextMethod()
@@ -35,11 +37,12 @@ new_optresult <- function(data, opt_name, opt_id, objectives,
   #stopifnot(is.OptResult(value))
   #var <- unlist(...)
   if (name %in% c("objectives", "inputs", "outputs",
-                  "parameters", "opt_name", "opt_id")) {
-    if (name == "objectives") {
-      names(attr(x, name)) <- value
+                  "parameters", "opt_name", "opt_id",
+                  "metadata")) {
+    if (name == "metadata") {
+      attr(x, "metadata") <- value
     } else {
-      attr(x, name) <- value
+      attr(x, "metadata")[[name]] <- value
     }
     return(x)
   } else {
@@ -47,7 +50,52 @@ new_optresult <- function(data, opt_name, opt_id, objectives,
   }
 }
 
-#' Title
+#' @export
+#' @importFrom dplyr rowwise
+#' @method rowwise OptResult
+rowwise.OptResult <- function(data, ...) {
+  out <- NextMethod(data, ...)
+  `class<-`(out, unlist(lapply(class(out), function(x) if(x == "rowwise_df") c("rowwise_df", "OptResult") else x)))
+}
+
+#' @importFrom dplyr mutate
+#' @method mutate rowwise_df
+#' @export
+mutate.rowwise_df <- function(data, ...) {
+  out <- NextMethod(data, ...)
+  attr(out, "metadata") <- attr(data, "metadata")
+  `class<-`(out, unlist(lapply(class(out), function(x) if(x == "rowwise_df") c("rowwise_df", "OptResult") else x)))
+}
+
+#' @export
+#' @importFrom dplyr ungroup
+#' @method ungroup OptResult
+ungroup.OptResult <- function(x, ...) {
+  if (missing(...)) {
+    out <- tibble::as_tibble(x)
+    attr(out, "metadata") <- attr(x, "metadata")
+    class(out) <- c("OptResult", class(out))
+    out
+  } else {
+    return(NextMethod(x, ...))
+  }
+}
+
+#' @export
+#' @importFrom dplyr ungroup
+#' @method ungroup rowwise_df
+ungroup.rowwise_df <- function(x, ...) {
+  if (missing(...)) {
+    out <- tibble::as_tibble(x)
+    attr(out, "metadata") <- attr(x, "metadata")
+    class(out) <- c("OptResult", class(out))
+    out
+  } else {
+    return(NextMethod(x, ...))
+  }
+}
+
+#' An S3 class representing the optimization result, usually returned from [load_dataset()]
 #'
 #' @param data A tibble containing optimization results from OptimizeBrowser
 #' @param opt_name A name for the optimization run
@@ -61,12 +109,12 @@ new_optresult <- function(data, opt_name, opt_id, objectives,
 #'
 optresult <- function(data, opt_name, opt_id=1, objectives, inputs, outputs, parameters) {
   new_optresult(data,
-                opt_name = opt_name,
+                metadata = list(opt_name = opt_name,
                 opt_id = opt_id,
                 objectives = objectives,
                 inputs = inputs,
                 outputs = outputs,
-                parameters = parameters)
+                parameters = parameters))
 }
 
 #S4 implementation

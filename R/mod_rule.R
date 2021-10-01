@@ -123,7 +123,7 @@ mod_rule_server <- function(id, rval) {
             shiny::textInput(ns("referenceValues"),
                              paste("Reference point values separated by comma",
                                    paste0("(",
-                                          paste0(rval$filtered_data$objectives,
+                                          paste0(rval$filtered_data$objective_names,
                                                  collapse = ", "),
                                           ")")
                                    ),
@@ -146,7 +146,7 @@ mod_rule_server <- function(id, rval) {
             stringr::str_split(input$referenceValues,
                                ",",
                                simplify = TRUE))),
-            rval$filtered_data$objectives))
+            rval$filtered_data$objective_names))
 
         rval$reference_point <- reference_point
         rval$kNN <- input$kNN

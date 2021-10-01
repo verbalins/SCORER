@@ -7,11 +7,11 @@
 #' @return optresults with ranks
 #' @export
 #'
-ndsecr <- function(.data, objectives = attr(.data, "objectives")) {
+ndsecr <- function(.data, objectives = .data$objectives) {
   if (is.numeric(objectives) || is.character(objectives)) {
     # Named or numeric vector for the objective subsets
-    if (!is.null(attr(.data, "objectives"))) {
-      objectives <- attr(.data, "objectives")[objectives]
+    if (!is.null(.data$objectives)) {
+      objectives <- .data$objectives[objectives]
     } else {
       temp_obj <- grepl("Max|max", objectives)
       names(temp_obj) <- objectives
@@ -40,29 +40,26 @@ ndsecr <- function(.data, objectives = attr(.data, "objectives")) {
 #' Normalize values in the optimization data.
 #'
 #' @param .data an OptResults class
-#' @param objectives Optimization goals
+#' @param objectives Optimization goals, named
 #' @param limits Named character vector with min and max values for each objective
 #'
 #' @return Normalized values
 normalize_values <- function(.data,
-                            objectives = attr(.data, "objectives"),
+                            objectives = .data$objective_names,
                             limits = NULL) {
   # Make sure that the values are normalized and
   # handled depending on maximize or minimize
-  if (is.null(objectives)) {
-    objectives <- attr(.data, "objectives")
-  }
 
   if (is.null(limits)) {
     # Normalize by standard range
-    for (obj_name in names(objectives)) {
+    for (obj_name in objectives) {
       .data[, obj_name] <- BBmisc::normalize(.data[, obj_name],
                                             method = "range",
                                             margin = 2)
     }
   } else {
     # Normalize by custom limits
-    for (obj_name in names(objectives)) {
+    for (obj_name in objectives) {
       .data[, obj_name] <- BBmisc::normalize(.data[, obj_name],
                                             method = "range",
                                             margin = 2,

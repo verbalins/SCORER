@@ -56,10 +56,10 @@ mod_export_server <- function(id, r) {
       # Get code for the analysis
       get_code <- shiny::reactive({
         load_data <- paste0("# Loading the dataset and assigning objectives, inputs, and outputs.<br>",
-                            "df <- SCORER::loaddataset(file = \"",
+                            "df <- SCORER::load_dataset(file = \"",
                             r$filepath,
                             "\",<br>",
-                            pastevector("objectives", r$data$objectives),
+                            pastevector("objectives", r$data$objective_names),
                             ",<br>",
                             pastevector("inputs", r$data$inputs),
                             ",<br>",
@@ -70,7 +70,7 @@ mod_export_server <- function(id, r) {
                               "df_imported <- df %>% <br>",
                               "dplyr::select(",
                               paste("Iteration",
-                                    paste(r$data$objectives, collapse = ", "),
+                                    paste(r$data$objective_names, collapse = ", "),
                                     paste(r$data$inputs, collapse = ", "),
                                     paste(r$data$outputs, collapse = ", "),
                                     "dplyr::starts_with(c('Rank', 'Distance'))",

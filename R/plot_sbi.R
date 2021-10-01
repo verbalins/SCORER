@@ -2,8 +2,8 @@
 
 plot_parcoords <- function(.data,
                            selection = c(Distance,
-                                         attr(.data, "inputs"),
-                                         names(attr(.data, "objectives")))) {
+                                         .data$inputs,
+                                         .data$objective_names)) {
   .data %>%
     dplyr::select(selection) %>%
     plotly::plot_ly(type = "parcoords",
@@ -15,8 +15,8 @@ plot_parcoords <- function(.data,
 
 # Creates a list to be used as input to the parallel coordinates chart
 create_dimensions_list <- function(.data) {
-  obj <- names(attr(.data, "objectives"))
-  inputs <- attr(.data, "inputs")
+  obj <- .data$objective_names
+  inputs <- .data$inputs
   params <- colnames(.data)
   dim_list <- vector("list")
   for (i in seq_along(params)) {
@@ -51,7 +51,7 @@ plot_tree <- function(tree, save) {
 }
 
 plot_pca <- function(.data) {
-  pca  <- prcomp(FSMJ_dist %>% dplyr::select("Distance", attr(., "inputs")))
+  pca  <- prcomp(FSMJ_dist %>% dplyr::select("Distance", .$inputs))
   fit <- fastcluster::hclust(dist(pca$x[, 1:3]))
   groups <- cutree(fit, k = 4)
 
@@ -171,16 +171,16 @@ plotnd <- function(.data, ...) {
     if (!is.null(Call[[argname]]))
 
 
-  if (length(.data$objectives) <= 2) {
+  if (length(.data$objective_names) <= 2) {
     SCORER::plot2d(.data,
-                   x = .data$objectives[1],
-                   y = .data$objectives[2],
+                   x = .data$objective_names[1],
+                   y = .data$objective_names[2],
                    color = )
   } else {
     SCORER::plot3d(.data,
-                   x = .data$objectives[1],
-                   y = .data$objectives[2],
-                   z = .data$objectives[3],
+                   x = .data$objective_names[1],
+                   y = .data$objective_names[2],
+                   z = .data$objective_names[3],
                    color = )
   }
 }

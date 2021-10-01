@@ -184,13 +184,13 @@ assign_reference_point <- function(.data, reference_point, knn) {
                                 reference_point))
 
   scaled <- scaled %>%
-    dplyr::mutate(dplyr::across(dataset$objectives,
+    dplyr::mutate(dplyr::across(dataset$objective_names,
                                 scales::rescale,
                                 to = c(0, 1)))
 
   scaled_ref <- scaled %>%
     dplyr::slice(nrow(.)) %>%
-    dplyr::select(dataset$objectives) %>%
+    dplyr::select(dataset$objective_names) %>%
     as.numeric(.)
 
   names(scaled_ref) <- names(reference_point)

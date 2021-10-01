@@ -55,7 +55,7 @@ mod_import_server <- function(id, r) {
                                     value = TRUE),
                       inputs = r$data$inputs,
                       outputs = r$data$outputs,
-                      objectives = r$data$objectives))
+                      objectives = r$data$objective_names))
         }
       })
 
@@ -86,10 +86,10 @@ mod_import_server <- function(id, r) {
           # Start by getting the column names if available
           r$data <- NULL
           r$filepath <- input$fileupload$name
-          r$data <- loaddataset(input$fileupload$datapath)
+          r$data <- load_dataset(input$fileupload$datapath)
           r$data$opt_name <- tools::file_path_sans_ext(input$fileupload$name)
           shiny::updateSelectInput(session, "data_objectives",
-                                   selected = isolate(unique(r$data$objectives)))
+                                   selected = isolate(unique(r$data$objective_names)))
         }
       })
 
@@ -99,14 +99,14 @@ mod_import_server <- function(id, r) {
         }
 
         if (!is.null(input$data_objectives)) {
-          attr(r$data, "objectives") <- attr(r$data, "objectives")[input$data_objectives]
+          r$data$objectives <- r$data$objectives[input$data_objectives]
         }
 
         if (!is.null(input$data_outputs)) {
           r$data$outputs <- input$data_outputs
         } else {
           r$data$outputs <- r$data$parameters[!(r$data$parameters %in% c(r$data$inputs,
-                                                                         r$data$objectives,
+                                                                         r$data$objective_names,
                                                                          "Rank",
                                                                          "Iteration",
                                                                          "Error",
