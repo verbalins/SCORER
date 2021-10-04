@@ -125,12 +125,12 @@ mod_visualization_server <- function(id, r) {
       # Render the scatter3d plot
       output$scatter3d <- plotly::renderPlotly({
         shiny::req(input$x, input$y, input$z)
-        SCORER::plot3d(r$df_selected()$sel,
-                       input$x,
-                       input$y,
-                       input$z,
-                       input$color,
-                       r$df_selected()$unsel,
+        SCORER::plotnd(.data = r$df_selected()$sel,
+                       x = input$x,
+                       y = input$y,
+                       z = input$z,
+                       color = input$color,
+                       unselected_data = r$df_selected()$unsel,
                        height = 600, source = "s3d")
       })
 
@@ -251,11 +251,11 @@ mod_visualization_server <- function(id, r) {
             plotname <- paste0("plot", my_i) # Don't use ns here
 
             output[[plotname]] <- plotly::renderPlotly({
-              SCORER::plot2d(r$df_selected()$sel,
-                             r$df_selected()$sel$objective_names[[1]],
-                             r$df_selected()$sel$objective_names[[my_i + 1]],
-                             input$color,
-                             r$df_selected()$unsel,
+              SCORER::plotnd(.data = r$df_selected()$sel,
+                             x = r$df_selected()$sel$objective_names[[1]],
+                             y = r$df_selected()$sel$objective_names[[my_i + 1]],
+                             color = input$color,
+                             unselected_data = r$df_selected()$unsel,
                              source = plotname) %>%
                 #plotly::toWebGL() %>%
                 plotly::hide_colorbar() %>%

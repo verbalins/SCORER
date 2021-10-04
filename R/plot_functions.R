@@ -178,6 +178,9 @@ plotnd <- function(.data, ...) {
   objectives <- .data$objective_names
   plotting_objectives <- list(x = NULL, y = NULL, z = NULL, color = "Rank")
 
+  # Determine the number of user assigned elements.
+  dimensions_to_plot <- sum(names(arguments) %in% c("x", "y", "z"))
+
   # Check for supplied arguments
   for (argname in c("x", "y", "z", "color")) {
     if (!is.null(arguments[[argname]])) {
@@ -195,13 +198,13 @@ plotnd <- function(.data, ...) {
     }
   }
 
-  if (length(.data$objective_names) == 2) {
-    do.call(SCORER::plot2d, append(arguments, list(.data = .data,
+  if (dimensions_to_plot == 2 || (dimensions_to_plot < 2 && length(objectives) == 2)) {
+    do.call(plot2d, append(arguments, list(.data = .data,
                    x = plotting_objectives[["x"]],
                    y = plotting_objectives[["y"]],
                    color = plotting_objectives[["color"]])))
   } else {
-    do.call(SCORER::plot3d, append(arguments, list(.data = .data,
+    do.call(plot3d, append(arguments, list(.data = .data,
                    x = plotting_objectives[["x"]],
                    y = plotting_objectives[["y"]],
                    z = plotting_objectives[["z"]],

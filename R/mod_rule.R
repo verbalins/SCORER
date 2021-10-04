@@ -4,7 +4,7 @@ mod_rule_ui <- function(id) {
   shiny::tagList(
     shiny::fillPage(
       # Decision trees
-      # FPM, through python and R
+      # FPM through R
       shiny::fluidRow(
         shiny::column(3,
           shinydashboard::box(width = NULL,
@@ -30,34 +30,18 @@ mod_rule_ui <- function(id) {
                                     selected = ""),
                  shiny::uiOutput(ns("referencepoint")),
                  shiny::hr(),
-                 shiny::uiOutput(ns("fpmapplyrules"))
+                 shiny::uiOutput(ns("fpmapplyrules")),
+                 shiny::br(),
+                 shinycssloaders::withSpinner(
+                   DT::DTOutput(ns("FPMruletable")))
               ),
               shiny::tabPanel("SBI",
                   shiny::uiOutput(ns("clusterSelection")),
                   shiny::actionButton(ns("sbirulebutton"),
                                       "Create Rules"),
-              )
-            ),
-          ),
-          shinydashboard::box(
-            width = NULL,
-            #height = 800,
-            title = "Rules",
-            shiny::tabsetPanel(
-              id = ns("fpmTab"),
-              type = "tabs",
-              shiny::tabPanel(
-                "RFPM",
-                shinycssloaders::withSpinner(
-                  DT::DTOutput(ns("FPMruletable")))
-              ),
-              shiny::tabPanel("PyFPM",
-                shinycssloaders::withSpinner(
-                  DT::DTOutput(ns("Pyruletable")))
-              ),
-              shiny::tabPanel("SBI",
-                shinycssloaders::withSpinner(
-                  DT::DTOutput(ns("SBIruletable")))
+                  shiny::br(),
+                  shinycssloaders::withSpinner(
+                    DT::DTOutput(ns("SBIruletable")))
               )
             ),
           ),
@@ -67,8 +51,7 @@ mod_rule_ui <- function(id) {
             width = NULL,
             plotly::plotlyOutput(ns("ruleplot"),
                                  height = "100%",
-                                 width = "100%")
-          )
+                                 width = "100%"))
         )
       )
     )
@@ -185,32 +168,15 @@ mod_rule_server <- function(id, rval) {
           rval$rule_type <- "Manual"
         }
 
-        if (input$fpmTab == "RFPM") {
-          rval$rules_r <- fpm(rval$filtered_data,
-                             selected_data = rval$selected_data,
-                             max_level = input$fpmlevel,
-                             min_sig = input$minsig,
-                             use_equality = input$fpmequal,
-                             only_most_significant = input$fpmonlymostsig) %>%
-            dplyr::select(Rule, Significance, Unsignificance, Ratio)
+        rval$rules_r <- fpm(rval$filtered_data,
+                           selected_data = rval$selected_data,
+                           max_level = input$fpmlevel,
+                           min_sig = input$minsig,
+                           use_equality = input$fpmequal,
+                           only_most_significant = input$fpmonlymostsig) %>%
+          dplyr::select(Rule, Significance, Unsignificance, Ratio)
 
-          output$FPMruletable <- DT::renderDT(dt_rules(rval$rules_r))
-        } else {
-          reticulate::source_python("../py/FPM.py")
-
-          rval$rules_py <- ExportRules(
-            FPM(minimumSig = input$minsig,
-                parameterNames = colnames(sel),
-                selected_data = sel,
-                unselected_data = unsel,
-                useEquality = TRUE)) %>%
-            dplyr::mutate(Rule = paste(Parameter, Sign, round(Value, 0)),
-                          Significance = SEL,
-                          Unsignificance = UNSEL) %>%
-            dplyr::select(Rule, Significance, Unsignificance, Ratio)
-
-          output$Pyruletable <- DT::renderDT(dt_rules(rval$rules_py))
-        }
+        output$FPMruletable <- DT::renderDT(dt_rules(rval$rules_r))
 
         rval$minsig <- input$minsig
         rval$fpmlevel <- input$fpmlevel
@@ -252,7 +218,7 @@ mod_rule_server <- function(id, rval) {
           shiny::need(!is.null(rval$plotdims()$x),
                       "Go to visualization tab first"))
 
-        p <- SCORER::plot3d(.data = rule_sel()$sel,
+        p <- SCORER::plotnd(.data = rule_sel()$sel,
                             x = rval$plotdims()$x,
                             y = rval$plotdims()$y,
                             z = rval$plotdims()$z,
