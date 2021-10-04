@@ -1,3 +1,5 @@
+# Plotting functions for SCORE analysis.
+
 #' Creates a frequency chart from the supplied data set
 #'
 #' @param .data The data, preferably loaded from [load_dataset()]
