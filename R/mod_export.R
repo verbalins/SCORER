@@ -140,7 +140,7 @@ mod_export_server <- function(id, r) {
                            r$cluster$form,
                            ", ",
                            r$cluster$params,
-                           ") <br>")
+                           ", data = df_filtered) <br>")
             clustered_data <- paste0(rprt,
                                      "tree_pred <- partykit::as.party(rprt) %>% ",
                                      "predict(type = 'node') <br>",
@@ -155,8 +155,7 @@ mod_export_server <- function(id, r) {
 
           clustered_data <- paste0("# Applying clustering to the filtered data.<br>",
                                    clustered_data,
-                                   "df_clustered <- df_filtered %>%
-                                   dplyr::mutate(Cluster = cluster) <br>")
+                                   "df_clustered <- df_filtered %>% dplyr::mutate(Cluster = cluster) <br>")
         }
 
         if (nrow(r$df_selected()$unsel) == 0) {
@@ -234,6 +233,7 @@ mod_export_server <- function(id, r) {
 
         preamble <- paste0("# Code to replicate the analysis done in the web tool:<br>",
                            "library(SCORER)<br>",
+                           "library(dplyr)<br>",
                            "set.seed(", r$randomseed, ")<br>")
         paste(preamble,
               load_data,
