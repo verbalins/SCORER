@@ -36,7 +36,8 @@ Imports:
     golem,
     htmltools,
     shiny,
-    sloop (>= 1.0.1)
+    sloop (>= 1.0.1),
+    processx
 RoxygenNote: 7.1.1
 Roxygen: list(markdown = TRUE)
 RdMacros: Rdpack
@@ -59,5 +60,6 @@ Suggests:
     Rdpack,
     spelling
 Language: en-US
-Remotes:  
+Remotes: 
     r-lib/sloop
+Config/testthat/edition: 3

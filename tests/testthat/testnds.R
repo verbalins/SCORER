@@ -1,4 +1,3 @@
-context("Tests for the nds module.")
 library(SCORER)
 
 df <- SCORER::load_dataset(system.file("extdata", "FMC.csv", package = "SCORER"),

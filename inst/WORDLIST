@@ -2,11 +2,15 @@ FPM
 Lifecycle
 OptResults
 OptimizeBrowser
+RSME
 csv
 ggplot
-github
-https
+golem
+interpolant
 itemsets
+neighbouring
 optresults
+parallelization
+plotly
 tex
 tibble

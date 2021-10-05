@@ -1,4 +1,3 @@
-context("Tests for the OptResult class.")
 library(SCORER)
 
 correct_class <- c("OptResult", "tbl_df", "tbl", "data.frame")
