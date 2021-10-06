@@ -36,15 +36,20 @@ add_distances <- function(.data, pareto_solutions = NULL, parallel_cores = 0) {
 
     # For progress bar
     progcombine <- function() {
-      pb <- utils::txtProgressBar(min = 1,
-                                  max = nrow(cont) - 1,
-                                  style = 3)
-      count <- 0
-      function(...) {
-        count <<- count + length(list(...)) - 1
-        utils::setTxtProgressBar(pb, count)
-        utils::flush.console()
-        c(...)
+      if (interactive()) {
+        pb <- utils::txtProgressBar(min = 1,
+                                    max = nrow(cont) - 1,
+                                    style = 3)
+        count <- 0
+        function(...) {
+          count <<- count + length(list(...)) - 1
+          utils::setTxtProgressBar(pb, count)
+          utils::flush.console()
+          c(...)
+        }
+      }
+      else {
+        c
       }
     }
 
@@ -54,7 +59,9 @@ add_distances <- function(.data, pareto_solutions = NULL, parallel_cores = 0) {
                             .combine = progcombine(),
                             .packages = c("dplyr")
                             ) %dopar% {
-      euclidean_distance_vector(cont[i, objectives], interpolant, objectives)
+      solutions <- cont[i, objectives] %>% dplyr::select(dplyr::all_of(objectives))
+      solutions <- solutions[rep(1, nrow(interpolant)),]
+      min(sqrt(rowSums((solutions-interpolant)^2)))
     }
     doParallel::stopImplicitCluster()
 
@@ -80,6 +87,7 @@ add_distances <- function(.data, pareto_solutions = NULL, parallel_cores = 0) {
 
 # Private functions
 # Solutions is a data.frame supplying the current value to evaluate against all values in interpolant
+#' @export
 euclidean_distance_vector <- function(solutions, interpolant, objectives) {
   solutions <- solutions %>% dplyr::select(dplyr::all_of(objectives))
   solutions <- solutions[rep(1, nrow(interpolant)),]

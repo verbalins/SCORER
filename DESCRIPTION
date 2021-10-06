@@ -37,8 +37,9 @@ Imports:
     htmltools,
     shiny,
     sloop (>= 1.0.1),
-    processx
-RoxygenNote: 7.1.1
+    processx,
+    janitor
+RoxygenNote: 7.1.2
 Roxygen: list(markdown = TRUE)
 RdMacros: Rdpack
 Suggests: 
