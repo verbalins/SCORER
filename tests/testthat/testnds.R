@@ -7,4 +7,12 @@ testthat::test_that("Normalization works correctly.", {
   normalized <- df %>% normalize_values() %>% dplyr::select(df$objective_names)
   testthat::expect_lte(max(normalized), 1)
   testthat::expect_gte(min(normalized), 0)
+
+  limits <- sapply(df[, df$objective_names], function(x) {c(min(x), max(x))})
+
+  returned_normalized <- normalized %>% normalize_values(df$objective_names, limits)
+
+  for (obj in df$objective_names) {
+    testthat::expect_equal(df[, obj], returned_normalized[, obj])
+  }
 })
