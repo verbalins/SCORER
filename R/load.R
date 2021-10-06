@@ -1,3 +1,6 @@
+#' @importFrom magrittr %>%
+NULL
+
 #' Load optimization data
 #'
 #' @export

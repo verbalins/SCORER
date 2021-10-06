@@ -239,7 +239,7 @@ mod_rule_server <- function(id, rval) {
             plotly::add_markers(data = rval$filtered_data %>%
                                   dplyr::filter(Iteration %in% rval$selected_data),
                                 text = ~Iteration,
-                                size = 1.5,
+                                size = I(40),
                                 marker = list(color = I("green")),
                                 name = "kNN")
         }
