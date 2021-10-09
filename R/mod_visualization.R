@@ -124,7 +124,7 @@ mod_visualization_server <- function(id, r) {
 
       # Render the scatter3d plot
       output$scatter3d <- plotly::renderPlotly({
-        shiny::req(input$x, input$y, input$z)
+        shiny::req(input$x, input$y, input$z, input$colorslider)
         SCORER::plotnd(.data = r$df_selected()$sel,
                        x = input$x,
                        y = input$y,
