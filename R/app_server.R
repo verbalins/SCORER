@@ -49,7 +49,8 @@ app_server <- function(input, output, session) {
   mod_visualization_server("visualization", r)
 
   ### Rule logic ---------------------------------------------------
-  mod_rule_server("rule", r)
+  mod_rule_fpm_server("fpm", r)
+  mod_rule_sbi_server("sbi", r)
 
   ### Data export logic --------------------------------------------
   mod_export_server("export", r)
