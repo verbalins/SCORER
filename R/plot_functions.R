@@ -103,7 +103,8 @@ plot_splom <- function(.data) {
     diagonal = list(visible = FALSE))
 }
 
-plot2d <- function(.data, x, y, color = "Rank", unselected_data = NULL, ...) {
+#' @export
+plot2d <- function(.data, x, y, color = "Rank", unselected_data = NULL, pareto = TRUE, ...) {
   p <- plotly::plot_ly(type = "scattergl",
                        name = "All Data",
                        x = stats::as.formula(paste0("~", x)),
@@ -118,14 +119,20 @@ plot2d <- function(.data, x, y, color = "Rank", unselected_data = NULL, ...) {
                                              paste0("<br><b>", y, "</b>: %{y}"),
                                              paste0("<br><b>Iteration</b>: %{customdata}<extra></extra>")),
                   ...)
-  if (is.null(unselected_data)) {
-    p
-  } else {
-    p %>% addunselected(unselected_data)
+  if (!is.null(unselected_data)) {
+    p <- p %>% addunselected(unselected_data)
   }
+
+  if (pareto) {
+    p <- p %>% plotly::add_markers(data = .data$pareto,
+                                   name = "Pareto",
+                                   opacity = 1)
+  }
+  p
 }
 
-plot3d <- function(.data, x, y, z, color = "Rank", unselected_data = NULL, ...) {
+#' @export
+plot3d <- function(.data, x, y, z, color = "Rank", unselected_data = NULL, pareto = TRUE, ...) {
   suppressWarnings(
     p <- plotly::plot_ly(type = "scatter3d",
                          name = "All Data",
@@ -144,11 +151,16 @@ plot3d <- function(.data, x, y, z, color = "Rank", unselected_data = NULL, ...) 
                          data = .data,
                          ...))
 
-  if (is.null(unselected_data)) {
-      p
-  } else {
-    p %>% addunselected(unselected_data)
+  if (!is.null(unselected_data)) {
+    p <- p %>% addunselected(unselected_data)
   }
+
+  if (pareto) {
+    p <- p %>% plotly::add_markers(data = .data$pareto,
+                                   name = "Pareto",
+                                   opacity = 1)
+  }
+  p
 }
 
 #' Plot multi-objective optimization data
@@ -182,14 +194,19 @@ plotnd <- function(.data, pareto = TRUE, ...) {
   objectives <- .data$objective_names
   plotting_objectives <- list(x = NULL, y = NULL, z = NULL, color = "Rank")
 
-  # Determine the number of user assigned elements.
-  dimensions_to_plot <- sum(names(arguments) %in% c("x", "y", "z"))
-
   # Check for supplied arguments
   for (argname in c("x", "y", "z", "color")) {
-    if (!is.null(arguments[[argname]])) {
-      plotting_objectives[argname] <- arguments[[argname]]
-      objectives <- objectives[!(objectives %in% arguments[[argname]])]
+    # If the argument is supplied or the argument is missing in the dataset
+    if (!is.null(arguments[[argname]]) ||
+        (!is.null(arguments[[argname]]) && !(arguments[[argname]] %in% colnames(.data)))) {
+      if (arguments[[argname]] %in% colnames(.data)) {
+        # The column exists in the dataset, assign it as a plotting objective.
+        plotting_objectives[argname] <- arguments[[argname]]
+        # Update the objective vector with the new objectives
+        objectives <- objectives[!(objectives %in% arguments[[argname]])]
+      }
+      # Remove it from the arguments list, treat it as handled.
+      # arguments is further passed to the next function.
       arguments[argname] <- NULL
     }
   }
@@ -202,24 +219,25 @@ plotnd <- function(.data, pareto = TRUE, ...) {
     }
   }
 
+  # Determine the number of user assigned elements.
+  dimensions_to_plot <- sum(names(plotting_objectives) %in% c("x", "y", "z")) -
+    sum(is.na(plotting_objectives[c("x", "y", "z")]))
+
   if (dimensions_to_plot == 2 || (dimensions_to_plot < 2 && length(objectives) == 2)) {
     p <- do.call(plot2d, append(arguments, list(.data = .data,
                    x = plotting_objectives[["x"]],
                    y = plotting_objectives[["y"]],
-                   color = plotting_objectives[["color"]])))
+                   color = plotting_objectives[["color"]],
+                   pareto = pareto)))
   } else {
     p <- do.call(plot3d, append(arguments, list(.data = .data,
                    x = plotting_objectives[["x"]],
                    y = plotting_objectives[["y"]],
                    z = plotting_objectives[["z"]],
-                   color = plotting_objectives[["color"]])))
+                   color = plotting_objectives[["color"]],
+                   pareto = pareto)))
   }
 
-  if (pareto) {
-    p <- p %>% plotly::add_markers(data = .data$pareto,
-                                   name = "Pareto",
-                                   opacity = 1)
-  }
   p
 }
 
