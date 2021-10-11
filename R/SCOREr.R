@@ -50,6 +50,17 @@ new_optresult <- function(data = tibble::tibble(),
   }
 }
 
+#' Make sure to update the objective lists when adding or removing columns.
+#'
+#' @export
+#' @importFrom dplyr select
+#' @method select OptResult
+select.OptResult <- function(data, ...) {
+  out <- NextMethod(data, ...)
+  out$objectives <- out$objectives[out$objective_names %in% colnames(out)]
+  out
+}
+
 #' @export
 #' @importFrom dplyr rowwise
 #' @method rowwise OptResult
