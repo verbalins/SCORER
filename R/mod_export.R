@@ -47,7 +47,7 @@ mod_export_server <- function(id, r) {
                            "Imported" = r$data,
                            "Filtered" = r$filtered_data,
                            "Selected" = r$df_selected()$sel,
-                           "Rules" = r$rules_r)
+                           "Rules" = r$rules_r_fpm)
             write.csv2(as.data.frame(data), file, row.names = FALSE)
           }
         }
@@ -173,7 +173,7 @@ mod_export_server <- function(id, r) {
 
         # Rules will be dependent on weather we have assigned a reference point
         #  or selected iterations manually
-        if (!is.null(r$rules_r)) {
+        if (!is.null(r$rules_r_fpm)) {
           if (r$rule_type == "Reference") {
             refpointassign <- paste0(paste(names(r$reference_point),
                                            paste(r$reference_point),
@@ -207,10 +207,10 @@ mod_export_server <- function(id, r) {
                                   sep = ", <br>"))
 
             # Add the selected rules from the rule page.
-            if (!is.null(r$selected_rules)) {
+            if (!is.null(r$selected_rules_fpm)) {
               rules <- paste(rules,
                              paste("selected_solutions <- df_filtered %>% ",
-                                   paste0("dplyr::filter(eval(str2expression(\"", r$selected_rules, "\")))<br>"),
+                                   paste0("dplyr::filter(eval(str2expression(\"", r$selected_rules_fpm, "\")))<br>"),
                                    sep = " <br>"),
                              sep = " <br>")
               rules <- paste(rules,

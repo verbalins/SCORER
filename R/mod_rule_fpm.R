@@ -158,7 +158,7 @@ mod_rule_fpm_server <- function(id, rval) {
         rval$rule_type <- "Manual"
       }
 
-      rval$rules_r <- fpm(
+      rval$rules_r_fpm <- fpm(
         rval$filtered_data,
         selected_data = rval$selected_data,
         max_level = input$fpmlevel,
@@ -166,10 +166,10 @@ mod_rule_fpm_server <- function(id, rval) {
         use_equality = input$fpmequal,
         only_most_significant = input$fpmonlymostsig
       ) %>%
-        dplyr::select(Rule, Significance, Unsignificance, Ratio)
+      dplyr::select(Rule, Significance, Unsignificance, Ratio)
 
       output$FPMruletable <-
-        DT::renderDT(dt_rules(rval$rules_r))
+        DT::renderDT(dt_rules(rval$rules_r_fpm))
 
       rval$minsig <- input$minsig
       rval$fpmlevel <- input$fpmlevel
@@ -184,9 +184,9 @@ mod_rule_fpm_server <- function(id, rval) {
         selected_rows <- input$FPMruletable_rows_selected
 
         rules_str <-
-          paste(unlist(rval$rules_r[selected_rows, "Rule"]),
+          paste(unlist(rval$rules_r_fpm[selected_rows, "Rule"]),
                 collapse = " & ")
-        rval$selected_rules <- rules_str
+        rval$selected_rules_fpm <- rules_str
 
         sel <-
           sel %>% dplyr::filter(eval(str2expression(rules_str)))
