@@ -9,7 +9,12 @@
 experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 <!-- badges: end -->
 
-The goal of SCORER is to allow for
+The goal of SCORER is to allow reproducible knowledge extraction of
+multi-objective optimization data, primarily obtained from
+simulation-based optimization. The package contains methods as well as a
+Shiny application reachable at
+[shinyapps.io](https://verbalins.shinyapps.io/SCORER/) if you want to
+preview the app.
 
 ## Installation
 
@@ -33,7 +38,7 @@ SCORER::run_app()
 
 # To pre-populate the browser with a dataset, 
 # use the dataset parameter with data imported by
-# the load_dataset function.
-# df <- SCORER::load_dataset("datafile.csv")
+# the loaddataset function.
+# df <- SCORER::loaddataset("datafile.csv")
 # SCORER::run_app(dataset=df)
 ```

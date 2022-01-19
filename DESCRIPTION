@@ -1,6 +1,6 @@
 Package: SCORER
 Version: 0.0.0.9000
-Date: 2021-06-30
+Date: 2022-01-20
 Title: Reproducible Knowledge Extraction And Visualization Of Multi-Objective Optimization Data
 Authors@R: 
     person(given = "Simon",
@@ -36,7 +36,6 @@ Imports:
     golem,
     htmltools,
     shiny,
-    sloop (>= 1.0.1),
     processx,
     janitor
 RoxygenNote: 7.1.2
@@ -58,9 +57,6 @@ Suggests:
     partykit,
     gtools,
     attempt,
-    Rdpack,
-    spelling
+    Rdpack
 Language: en-US
-Remotes: 
-    r-lib/sloop
 Config/testthat/edition: 3
