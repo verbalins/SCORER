@@ -1,0 +1,29 @@
+---
+title: "SCORER"
+author: "Simon Lidberg"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{my-vignette}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+# Main use
+After loading the package, the main methods are `load_dataset()`, 
+
+```{r setup, warning = FALSE, message=FALSE}
+library(SCORER)
+```
+
+# Specific functions
+
+# Shiny application
+The Shiny application can be launched with `run_app()` and the dataset to be analyzed can be supplied with the dataset parameter. The dataset must be loaded with the `load_dataset()` function.
