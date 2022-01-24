@@ -114,7 +114,8 @@ mod_visualization_server <- function(id, r) {
                           line = list(
                             color = stats::formula(
                               paste0("~",
-                                     shiny::isolate(input$color)))),
+                                     #shiny::isolate(input$color)))),
+                                     input$color))),
                           source = "pcoords",
                           data = r$filtered_data) %>%
             plotly::event_register(event = "plotly_restyle") #%>%
@@ -124,7 +125,7 @@ mod_visualization_server <- function(id, r) {
 
       # Render the scatter3d plot
       output$scatter3d <- plotly::renderPlotly({
-        shiny::req(input$x, input$y, input$z, input$colorslider)
+        shiny::req(input$x, input$y, input$z, input$colorslider, r$df_selected()$sel)
         SCORER::plot3d(.data = r$df_selected()$sel,
                        x = input$x,
                        y = input$y,
@@ -226,14 +227,16 @@ mod_visualization_server <- function(id, r) {
             plotly::plotlyOutput(
               ns(plotname), # ns because it's a plotlyOutput
               width = paste0(
-                floor((1 / (length(r$filtered_data$objective_names) - 1)) * 100) - 1,
+                #floor((1 / (length(r$filtered_data$objective_names) - 1)) * 100) - 1,
+                33,
                 "%"),
               inline = TRUE, height = "100%")
           })
 
         # Convert the list to a tagList - this is necessary for the list of
         # items to display properly.
-        do.call(shiny::tagList, plot_output_list)
+        shiny::fluidPage(do.call(shiny::tagList, plot_output_list),
+                         style = "overflow-y:scroll")
       })
 
       # Call renderPlot for each one. Plots are only actually generated when
