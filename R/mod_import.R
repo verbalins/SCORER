@@ -7,20 +7,22 @@ mod_import_ui <- function(id) {
   ns <- shiny::NS(id)
   shiny::tagList(
     shiny::fluidPage(
+      tags$head(tags$style(".shiny-output-error{color: red;}")),
       shiny::fluidRow(
         # Data selection and import
-        shinydashboard::box(title = "Upload data", #width = NULL,
+        shinydashboard::box(title = "Upload data",
           shiny::helpText("Select a file exported from OptimizeBrowser,
                           or which contains similar headers."),
           shiny::fileInput(ns("fileupload"), "Choose CSV File",
                            multiple = FALSE,
                            accept = c("text/csv",
                                       "text/comma-separated-values",
-                                      ".csv"))
+                                      ".csv")),
+          shiny::textOutput(ns("upload_status"))
         )
       ),
       shiny::fluidRow(
-        shinydashboard::box(title = "Select Parameters", #width = NULL,
+        shinydashboard::box(title = "Select Parameters", collapsible = TRUE,
           shiny::helpText("Select the type of parameters for importing.
                           Parameters not selected in either category will
                           be excluded."),
@@ -29,7 +31,6 @@ mod_import_ui <- function(id) {
           shiny::uiOutput(ns("data_outputs")),
           shiny::checkboxInput(ns("distancemetric"), "Add distance metric"),
           shiny::actionButton(ns("importData"), "Import")
-
       )
       )
     )
@@ -85,8 +86,14 @@ mod_import_server <- function(id, r) {
         if (!is.null(new_data)) {
           # Start by getting the column names if available
           r$data <- NULL
+          output$upload_status <- NULL
           r$filepath <- input$fileupload$name
-          r$data <- load_dataset(input$fileupload$datapath)
+          if (is.character(try(r$data <- load_dataset(input$fileupload$datapath), silent = TRUE))) {
+            shiny::showNotification("Please include objective information in the OptBrowser export", type = "error")
+            output$upload_status <- shiny::renderText(shiny::validate(
+              shiny::need(!is.null(r$data), "Error while parsing, include objective information in the file!")))
+            return()
+          }
           r$data$opt_name <- tools::file_path_sans_ext(input$fileupload$name)
           shiny::updateSelectInput(session, "data_objectives",
                                    selected = isolate(unique(r$data$objective_names)))
