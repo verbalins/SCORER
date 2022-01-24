@@ -1,6 +1,6 @@
 Package: SCORER
 Version: 0.0.0.9000
-Date: 2022-01-20
+Date: 2022-01-24
 Title: Reproducible Knowledge Extraction And Visualization Of Multi-Objective Optimization Data
 Authors@R: 
     person(given = "Simon",
@@ -15,7 +15,7 @@ Description: This package provides methods for analyzing multi-objective optimiz
     method. Secondly, an interactive Shiny application is available to perform knowledge-driven optimization on
     multi-objective optimization data. The goal of the Shiny application is to provide a reproducible analysis
     based on filtering, clustering, visualization, rule extraction and export. 
-License: MIT + file LICENSE
+License: CC BY 4.0
 Encoding: UTF-8
 LazyData: true
 URL: https://github.com/verbalins/SCORER
@@ -57,6 +57,9 @@ Suggests:
     partykit,
     gtools,
     attempt,
-    Rdpack
+    Rdpack,
+    knitr,
+    rmarkdown
 Language: en-US
 Config/testthat/edition: 3
+VignetteBuilder: knitr
