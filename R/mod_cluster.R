@@ -32,7 +32,7 @@ mod_cluster_ui <- function(id) {
         shiny::uiOutput(ns("cluster_in_dep")),
         shiny::actionButton(ns("add_inputs"), "Add all inputs"),
         shiny::actionButton(ns("reset_button"), "Reset values"),
-        shiny::checkboxInput(ns("scale_dep"), "Scale Dependents", TRUE)
+        shiny::checkboxInput(ns("scale_dep"), "Scale Dependents", FALSE)
       ),
       shinydashboard::box(
         #shiny::radioButtons("clustermethod", "Cluster method:",
@@ -73,8 +73,8 @@ mod_cluster_ui <- function(id) {
             shiny::actionButton(ns("eval_clus_perf"), "Evaluate eps")
           ),
           shiny::tabPanel("Decision Trees",
-            shiny::helpText("Testing help text here"),
-            shiny::numericInput(ns("cp"), "Pruning parameter:", 0.01, 0.001, 1, 0.001),
+            shiny::helpText("Assign the pruning parameter and max depth of tree."),
+            shiny::numericInput(ns("cp"), "Pruning parameter:", 0.05, 0.001, 1, 0.001),
             shiny::numericInput(ns("maxdepth"), "Maximum depth of tree:", 5, 1, 50, 1)
           )
         ),
@@ -429,8 +429,13 @@ mod_cluster_server <- function(id, r) {
         ggplot2::ggplot(
           as.data.frame(shiny::isolate(cluster_data$data)),
           ggplot2::aes_string(input$cluster_dep[1], input$cluster_dep[2])) +
-          ggplot2::geom_point(ggplot2::aes(color = clust)) +
-          ggplot2::scale_color_viridis_c()
+          ggplot2::geom_point(ggplot2::aes(color = as.factor(clust))) +
+          ggplot2::scale_color_viridis_d() +
+          ggplot2::theme_minimal() +
+          ggplot2::guides(color =
+                            ggplot2::guide_legend(
+                              title = "Cluster")
+                          )
       })
     })
 

@@ -26,7 +26,11 @@ clust <- as.numeric(forcats::fct_recode(factor(tree_pred),
                                         !!!as.list(setNames(as.character(unique(tree_pred)),
                                                             seq_len(length(unique(tree_pred)))))))
 # Assign the clusters back to the dataset
-ACM <- ACM %>% mutate(Cluster = clust)
+ACM <- ACM %>% mutate(Cluster = clust,
+                      SumI = rowSums(across(IuOp1E:IpOp1O)))
+
+ACM$inputs <- c(ACM$inputs, "SumI")
+ACM$parameters <- c(ACM$parameters, "SumI")
 
 #options(shiny.error = browser)
 

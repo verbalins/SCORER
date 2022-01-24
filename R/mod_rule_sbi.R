@@ -14,7 +14,10 @@ mod_rule_sbi_ui <- function(id) {
             shiny::br(),
             shiny::actionButton(ns("sbirulebutton"),
                                 "Create Rules"),
-            shiny::br(), shiny::br(),
+            shiny::br(),
+            shiny::numericInput(ns("maxdist"),
+                                "Maximum distance for inclusion (d):", 0.05, 0.01, 1, 0.01),
+            shiny::br(),
             shinycssloaders::withSpinner(
               DT::DTOutput(ns("SBIruletable")))
           ),
@@ -65,9 +68,7 @@ mod_rule_sbi_server <- function(id, rval) {
           shiny::numericInput(ns("cp"),
                               "Pruning parameter:", 0.01, 0.001, 1, 0.001),
           shiny::numericInput(ns("maxdepth"),
-                              "Maximum depth of tree:", 5, 1, 50, 1),
-          shiny::numericInput(ns("maxdist"),
-                              "Maximum distance for inclusion (d):", 0.05, 0.01, 1, 0.01)
+                              "Maximum depth of tree:", 5, 1, 50, 1)
         )
       })
 
@@ -80,8 +81,10 @@ mod_rule_sbi_server <- function(id, rval) {
         rval$single_cluster <- NULL
         plot_color("Rank")
         selected_points$data <- NULL
-        DT::dataTableProxy("SBIruletable") %>% DT::selectRows(NULL)
-        output$SBIruletable <- NULL
+        if (!is.null(input$SBIruletable)) {
+          DT::dataTableProxy("SBIruletable") %>% DT::selectRows(NULL)
+          output$SBIruletable <- NULL
+        }
 
         plot_color("Distance")
 
@@ -110,10 +113,11 @@ mod_rule_sbi_server <- function(id, rval) {
         # Apply distance metric to each cluster and its pareto solutions
         # Find rules for each subcluster
         if (!is.null(selected_points$data)) {
-          # Remove old plot
-          #output$sbi_plot <- NULL
-
           plot_color("Distance")
+
+          rval$rules_r_sbi <- NULL
+
+          output$SBIruletable <- DT::renderDT(rval$rules_r_sbi)
 
           # Create new distances to the selected points
           rval$new_distance <- rval$single_cluster %>%
@@ -166,10 +170,8 @@ mod_rule_sbi_server <- function(id, rval) {
 
       selected_points <- shiny::reactiveValues("data" = NULL)
 
-      shiny::observeEvent(
-        plotly::event_data("plotly_selected", source = "rule_sbi"), {
-          selected <- plotly::event_data("plotly_selected",
-                                         source = "rule_sbi")
+      shiny::observeEvent(plotly::event_data("plotly_selected", source = "rule_sbi"), {
+          selected <- plotly::event_data("plotly_selected", source = "rule_sbi")
 
           if (is.null(selected)) {
             selected_points$data <- NULL
@@ -214,9 +216,11 @@ mod_rule_sbi_server <- function(id, rval) {
 
       output$sbi_plot <- plotly::renderPlotly({
         shiny::validate(
-          shiny::need(input$clusterSelection, "No cluster selected"))
+          shiny::need(input$clusterSelection, "No cluster selected"),
+          shiny::need(!is.null(rval$plotdims()$x), "Go to visualization tab first")
+        )
 
-        SCORER::plotnd(
+        p <- SCORER::plotnd(
           .data = rule_sel()$sel,
           x = rval$plotdims()$x,
           y = rval$plotdims()$y,
@@ -224,8 +228,10 @@ mod_rule_sbi_server <- function(id, rval) {
           unselected_data = rule_sel()$unsel,
           color = plot_color(),
           height = 800,
-          source = "rule_sbi") %>%
-        plotly::event_register(event = "plotly_selected")
+          source = "rule_sbi")
+        p
       })
+
+      output$SBIruletable <- NULL
   })
 }
