@@ -7,6 +7,7 @@
 
 [![Lifecycle:
 experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+[![DOI](https://zenodo.org/badge/299561085.svg)](https://zenodo.org/badge/latestdoi/299561085)
 <!-- badges: end -->
 
 The goal of SCORER is to allow reproducible knowledge extraction of
