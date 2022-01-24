@@ -10,7 +10,7 @@ identifiers:
     type: doi
     value: "10.5281/zenodo.123457"
 title: "SCORER"
-license: CC BY 4.0
+license: CC-BY-4.0
 version: 0.0.0.9000
 date-released: 2022-01-24
 url: "https://github.com/verbalins/SCORER"
