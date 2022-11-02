@@ -12,7 +12,7 @@ mod_rule_fpm_ui <- function(id) {
                                           "Minimum Significance",
                                           0.5, 0.1, 1.0, 0.1),
                       shiny::numericInput(ns("fpmlevel"),
-                                          "Rule levels", 1, 1, 4, 1),
+                                          "Rule levels", 1, 1, 6, 1),
                       shiny::checkboxInput(ns("fpmonlymostsig"),
                                            "Use only most significant?",
                                            value = TRUE),

@@ -4,6 +4,7 @@
 #'
 #' @param .data The data, preferably loaded from [load_dataset()]
 #' @param objectives Which objectives to use, defaults to all
+#' @param inputs The inputs to use, defaults to all optimization inputs
 #' @param rank The rank of the included solutions, inclusive
 #' @param n The number of bottlenecks to include
 #'
@@ -15,17 +16,17 @@
 freqchart <-
   function(.data,
            objectives = .data$objective_names,
+           inputs = .data$inputs,
            rank = 1,
            n = 10) {
 
     filtered <- .data %>%
       dplyr::filter(Rank <= rank) %>%
       dplyr::distinct_at(dplyr::vars(objectives,
-                                     .$inputs,
+                                     inputs,
                                      Rank),
                          .keep_all = T) %>% # Always unique solutions to a SCORE problem.
-      dplyr::select_at(dplyr::vars(dplyr::starts_with("imp")), function(x)
-        stringr::str_replace(x, "^imp_", ""))
+      dplyr::select(inputs)
 
     frequencies <- filtered %>%
       tidyr::gather() %>%
@@ -106,50 +107,50 @@ plot_pareto <- function(.data, objectives = .data$objective_names, interactive =
           )
         }
       } else if (length(objectives) == 3) {
-      p <- .data %>% plotly::plot_ly(
-        x = stats::as.formula(paste0("~", objectives[1])),
-        y = stats::as.formula(paste0("~", objectives[2])),
-        z = stats::as.formula(paste0("~", objectives[3])),
-        color = ~ Rank,
-        mode = "markers",
-        type = "scatter3d",
-        size = 2,
-        text = ~ paste(
-          "</br> Improvements: ", minImp,
-          "</br> Out: ", round(maxOut),
-          "</br> LT: ", round(minLT / 3600, 2), "h",
-          "</br> Rank: ", Rank
+        p <- .data %>% plotly::plot_ly(
+          x = stats::as.formula(paste0("~", objectives[1])),
+          y = stats::as.formula(paste0("~", objectives[2])),
+          z = stats::as.formula(paste0("~", objectives[3])),
+          color = ~ Rank,
+          mode = "markers",
+          type = "scatter3d",
+          size = 2,
+          text = ~ paste(
+            "</br> Improvements: ", minImp,
+            "</br> Out: ", round(maxOut),
+            "</br> LT: ", round(minLT / 3600, 2), "h",
+            "</br> Rank: ", Rank
+          )
         )
-      )
-    }
-    p
-  } else {
-    chart <- .data %>%
-      dplyr::distinct_at(dplyr::vars(all_of(objectives),
-                                     .$inputs,
-                                     Rank),
-                         .keep_all = T) %>% # Always unique solutions to a SCORE problem.
-      ggplot2::ggplot(ggplot2::aes_string(
-        x = dplyr::if_else("minImp" %in% objectives, "minImp", objectives[1]),
-        y = dplyr::if_else("maxOut" %in% objectives, "maxOut", objectives[2]),
-        color = "Rank"
-      )) +
-      ggplot2::geom_point() +
-      ggplot2::geom_line(data = .data %>% dplyr::filter(Rank == 1),
-                         color = "red") +
-      ggplot2::scale_y_continuous(n.breaks = 6) +
-      ggplot2::theme_classic(base_size = 13, base_family = "sans") +
-      ggplot2::labs(x = labelnames[objectives[1]],
-                    y = labelnames[objectives[2]]) +
-      ggplot2::theme(
-        axis.title.x = ggplot2::element_text(vjust = -0.5),
-        axis.title.y = ggplot2::element_text(vjust = 2)
-      )
+      }
+      p
+    } else {
+      chart <- .data %>%
+        dplyr::distinct_at(dplyr::vars(all_of(objectives),
+                                       .$inputs,
+                                       Rank),
+                           .keep_all = T) %>% # Always unique solutions to a SCORE problem.
+        ggplot2::ggplot(ggplot2::aes_string(
+          x = dplyr::if_else("minImp" %in% objectives, "minImp", objectives[1]),
+          y = dplyr::if_else("maxOut" %in% objectives, "maxOut", objectives[2]),
+          color = "Rank"
+        )) +
+        ggplot2::geom_point() +
+        ggplot2::geom_line(data = .data %>% dplyr::filter(Rank == 1),
+                           color = "red") +
+        ggplot2::scale_y_continuous(n.breaks = 6) +
+        ggplot2::theme_classic(base_size = 13, base_family = "sans") +
+        ggplot2::labs(x = dplyr::if_else(objectives[1] %in% names(labelnames), labelnames[objectives[1]], objectives[1]),
+                      y = dplyr::if_else(objectives[2] %in% names(labelnames), labelnames[objectives[2]], objectives[2])) +
+        ggplot2::theme(
+          axis.title.x = ggplot2::element_text(vjust = -0.5),
+          axis.title.y = ggplot2::element_text(vjust = 2)
+        )
 
-    if ("minLT" %in% objectives) {
-      chart <- chart + ggplot2::scale_y_continuous(labels = scales::unit_format(unit = "h"))
-    }
-    chart
+      if ("minLT" %in% objectives) {
+        chart <- chart + ggplot2::scale_y_continuous(labels = scales::unit_format(unit = "h"))
+      }
+      chart
   }
 }
 
@@ -157,7 +158,7 @@ plot_pareto <- function(.data, objectives = .data$objective_names, interactive =
 #'
 #' @export
 #' @param filename The name of the resulting file
-#' @param device pdf for pdf files or tex for tex file
+#' @param device png, pdf, or svg to ggsave or tex for tikz. Supply vector to save as multiple files.
 #' @importFrom ggplot2 ggsave last_plot
 #' @importFrom tikzDevice tikz
 #' @importFrom grDevices dev.off
@@ -170,28 +171,54 @@ export_plot <-
            height = 7,
            ...) {
 
-    if (device == "pdf" || device == "png") {
-      ggplot2::ggsave(
-        paste0(filename, ".", device),
-        path = path,
-        plot = .plot,
-        device = device,
-        family = "sans",
-        width = width,
-        height = height,
-        dpi = "print",
-        units = "cm",
-        ...
-      )
-    }
-    else if (device == "tex") {
-      tikzDevice::tikz(
-        file = paste0(path, filename, ".tex"),
-        width = width,
-        height = height,
-        ...
-      )
-      print(.plot)
-      grDevices::dev.off()
+    if (length(device) > 1) {
+      for (dev in device) {
+        export_plot(.plot,
+                    path = path,
+                    filename = filename,
+                    device = dev,
+                    width = width,
+                    height = height,
+                    ...)
+      }
+    } else {
+      if (device == "pdf" || device == "png" || device == "svg") {
+        if (device == "svg") {
+          require(svglite)
+          ggplot2::ggsave(
+            filename = paste0(filename, ".svg"),
+            plot = .plot,
+            path = path,
+            device = device,
+            width = width,
+            height = height,
+            units = "cm",
+            ...
+          )
+        } else {
+          ggplot2::ggsave(
+            paste0(filename, ".", device),
+            path = path,
+            plot = .plot,
+            device = device,
+            family = "sans",
+            width = width,
+            height = height,
+            dpi = "print",
+            units = "cm",
+            ...
+          )
+        }
+      }
+      else if (device == "tex") {
+        tikzDevice::tikz(
+          file = paste0(path, filename, ".tex"),
+          width = width,
+          height = height,
+          ...
+        )
+        print(.plot)
+        grDevices::dev.off()
+      }
     }
   }

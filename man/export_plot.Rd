@@ -17,7 +17,7 @@ export_plot(
 \arguments{
 \item{filename}{The name of the resulting file}
 
-\item{device}{pdf for pdf files or tex for tex file}
+\item{device}{png, pdf, or svg to ggsave or tex for tikz. Supply vector to save as multiple files.}
 }
 \description{
 Exports a plot created by \code{\link[=freqchart]{freqchart()}} or \code{\link[=plot_pareto]{plot_pareto()}}

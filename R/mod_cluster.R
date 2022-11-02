@@ -305,7 +305,8 @@ mod_cluster_server <- function(id, r) {
                                 minPts = input$minpts)
           r$cluster$method <- "dbscan::dbscan"
           r$cluster$params <- paste0("eps = ", input$eps, ", minPts = ", input$minpts)
-        } else if (db_method == "OPTICS") {
+        }
+        else if (db_method == "OPTICS") {
           res <- dbscan::optics(cluster_data$data, minPts = input$minpts)
           # TODO: Create validation for this condition
           if (dplyr::between(input$eps, 0, 1)) {
@@ -317,6 +318,7 @@ mod_cluster_server <- function(id, r) {
           r$cluster$params <- paste0("minPts = ", input$minpts)
           r$cluster$params2 <- paste0("xi = ", input$eps)
         } else {
+          shiny::updateNumericInput(session, "minpts", min = 2)
           res <- dbscan::hdbscan(cluster_data$data,
                                  minPts = input$minpts)
           r$cluster$method <- "dbscan::hdbscan"

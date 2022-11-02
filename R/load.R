@@ -72,7 +72,7 @@ load_dataset <- function(filename,
       dplyr::pull(2)
 
     opt_parameters <- colnames(opt) %>%
-      stringr::str_remove_all(pattern = "Iteration|Rank|ConstraintViolation|Replications|Error") %>%
+      stringr::str_remove_all(pattern = "Iteration|Rank|Generation|ConstraintViolation|Replications|Error") %>%
       .[. != ""]
 
     opt_objectives <- readr::read_delim(file = I(opt_info[[4]]),
@@ -84,12 +84,16 @@ load_dataset <- function(filename,
       dplyr::select_if(grepl("Min|Max", .)) %>%
       grepl("Max", .)
 
-    names(opt_objectives) <- utils::head(stringr::str_replace(opt_parameters,
-                                                              "maxTP",
-                                                              "maxOut"),
-                                         length(opt_objectives))
+    if (!is.null(objectives)) {
+      names(opt_objectives) <- objectives
+    } else {
+      names(opt_objectives) <- utils::head(stringr::str_replace(opt_parameters,
+                                                                "maxTP",
+                                                                "maxOut"),
+                                           length(opt_objectives))
+    }
 
-    opt_parameters <- utils::tail(opt_parameters, -length(opt_objectives))
+    opt_parameters <- opt_parameters[!(opt_parameters %in% names(opt_objectives))]
 
     # TODO: Change this to enable importing of custom optimization examples
     if (is.null(inputs) || length(inputs) == 0) {

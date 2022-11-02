@@ -58,6 +58,8 @@ new_optresult <- function(data = tibble::tibble(),
 select.OptResult <- function(data, ...) {
   out <- NextMethod(data, ...)
   out$objectives <- out$objectives[out$objective_names %in% colnames(out)]
+  out$inputs <- out$inputs[out$inputs %in% colnames(out)]
+  out$outputs <- out$outputs[out$outputs %in% colnames(out)]
   out
 }
 

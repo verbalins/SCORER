@@ -1,6 +1,6 @@
 Package: SCORER
-Version: 0.0.0.9000
-Date: 2022-01-24
+Version: 0.0.1.9000
+Date: 2022-11-01
 Title: Reproducible Knowledge Extraction And Visualization Of Multi-Objective Optimization Data
 Authors@R: 
     person(given = "Simon",
@@ -20,7 +20,7 @@ Encoding: UTF-8
 LazyData: true
 URL: https://github.com/verbalins/SCORER
 BugReports: https://github.com/verbalins/SCORER/issues
-Depends: R (>= 4.1)
+Depends: R (>= 4.2)
 Imports:
     tidyverse,
     rlang,
@@ -37,11 +37,7 @@ Imports:
     htmltools,
     shiny,
     processx,
-    janitor
-RoxygenNote: 7.1.2
-Roxygen: list(markdown = TRUE)
-RdMacros: Rdpack
-Suggests: 
+    janitor,
     testthat (>= 3.0.0),
     config (>= 0.3.1),
     shinydashboard,
@@ -59,7 +55,11 @@ Suggests:
     attempt,
     Rdpack,
     knitr,
-    rmarkdown
+    rmarkdown,
+    svglite
+RoxygenNote: 7.2.1
+Roxygen: list(markdown = TRUE)
+RdMacros: Rdpack
 Language: en-US
 Config/testthat/edition: 3
 VignetteBuilder: knitr

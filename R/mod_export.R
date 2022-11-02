@@ -161,7 +161,7 @@ mod_export_server <- function(id, r) {
         if (nrow(r$df_selected()$unsel) == 0) {
           selected_data <- "df_selected <- df_clustered # No selected solutions <br> "
         } else {
-          selected_data <- paste0("# Selection from the visualizaton tab. <br>",
+          selected_data <- paste0("# Selection from the visualization tab. <br>",
                                   "df_selected <- df_clustered %>% <br>",
                                   "dplyr::filter(Iteration %in% ",
                                   paste0("c(",
