@@ -24,7 +24,7 @@ You can install the development version from
 
 ``` r
 # install.packages("devtools")
-devtools::install_github("verbalins/SCORER")
+devtools::install_github("verbalins/SCORER", dependencies = TRUE)
 ```
 
 ## Example
