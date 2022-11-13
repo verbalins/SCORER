@@ -8,7 +8,7 @@
 #   number of clusters
 mod_cluster_ui <- function(id) {
   ns <- shiny::NS(id)
-  shiny::tagList(shinyjs::useShinyjs(), shiny::fillPage(
+  shiny::tagList(shinyjs::useShinyjs(), shiny::fluidPage(
     # Choose the clustering dimensions
     #   Selectinput
     # Choose the clustering algorithm
@@ -86,10 +86,9 @@ mod_cluster_ui <- function(id) {
       shinydashboard::box(shinycssloaders::withSpinner(shiny::plotOutput(
         ns("clusterVizLeft"), width = "100%"
       ))),
-      shinydashboard::box(shinycssloaders::withSpinner(shiny::plotOutput(
+      shinydashboard::box(shinycssloaders::withSpinner(plotly::plotlyOutput(
         ns("clusterVizRight"), width = "100%"
       )))
-
     )
   ))
 }
@@ -422,31 +421,59 @@ mod_cluster_server <- function(id, r) {
       }
       # Save selected values from cluster_dep
       cluster_data$cluster <- clust
-      r$filtered_data <- r$filtered_data %>%
-        dplyr::mutate(Cluster = cluster_data$cluster)
 
       cluster_data$saved <- input$clustTab
 
-      output$clusterVizRight <- shiny::renderPlot({
-        ggplot2::ggplot(
-          as.data.frame(shiny::isolate(cluster_data$data)),
-          ggplot2::aes_string(input$cluster_dep[1], input$cluster_dep[2])) +
-          ggplot2::geom_point(ggplot2::aes(color = as.factor(clust))) +
-          ggplot2::scale_color_viridis_d() +
-          ggplot2::theme_minimal() +
-          ggplot2::guides(color =
-                            ggplot2::guide_legend(
-                              title = "Cluster")
-                          )
-      })
-    })
+      output$clusterVizRight <- plotly::renderPlotly({
+        if (length(shiny::isolate(input$cluster_dep)) == 2) {
+          x <- shiny::isolate(input$cluster_dep[1])
+          y <- shiny::isolate(input$cluster_dep[2])
+          plotly::plot_ly(data = shiny::isolate(cluster_data$data),
+                          type = "scattergl",
+                          name = "All Data",
+                          x = stats::as.formula(paste0("~", x)),
+                          y = stats::as.formula(paste0("~", y)),
+                          color = stats::formula(paste0("~", "clust")),
+                          #customdata = ~Iteration,
+                          mode = "markers",
+                          size = I(30),
+                          opacity = 1,
+                          hovertemplate = paste(paste0("<b>", x, "</b>: %{x}"),
+                                                paste0("<br><b>", y, "</b>: %{y}")))
+        } else if (length(shiny::isolate(input$cluster_dep)) == 3) {
+          x <- shiny::isolate(input$cluster_dep[1])
+          y <- shiny::isolate(input$cluster_dep[2])
+          z <- shiny::isolate(input$cluster_dep[3])
+          plotly::plot_ly(data = shiny::isolate(cluster_data$data),
+                          type = "scatter3d",
+                          name = "All Data",
+                          x = stats::as.formula(paste0("~", x)),
+                          y = stats::as.formula(paste0("~", y)),
+                          z = stats::as.formula(paste0("~", z)),
+                          color = stats::formula(paste0("~", "clust")),
+                          #customdata = ~Iteration,
+                          mode = "markers",
+                          size = I(30),
+                          opacity = 1,
+                          hovertemplate = paste(paste0("<b>", x, "</b>: %{x}"),
+                                                paste0("<br><b>", y, "</b>: %{y}"),
+                                                paste0("<br><b>", z, "</b>: %{z}")))
+        }
 
-    #df_clustered <- shiny::reactive({
-    #  if (!is.null(cluster_data$cluster)) {
-    #    r$data <- r$filtered_data %>% dplyr::mutate(Cluster = cluster_data$cluster)
-    #  } else {
-    #    r$filtered_data
-    #  }
-    #})
+        #ggplot2::ggplot(
+        #  as.data.frame(shiny::isolate(cluster_data$data)),
+        #  ggplot2::aes_string(shiny::isolate(input$cluster_dep[1]), shiny::isolate(input$cluster_dep[2]))) +
+        #  ggplot2::geom_point(ggplot2::aes(color = as.factor(clust))) +
+        #  ggplot2::scale_color_viridis_d() +
+        #  ggplot2::theme_minimal() +
+        #  ggplot2::guides(color =
+        #                    ggplot2::guide_legend(
+        #                      title = "Cluster")
+        #                  )
+      })
+
+      r$filtered_data <- r$filtered_data %>%
+        dplyr::mutate(Cluster = cluster_data$cluster)
+    })
   })
 }

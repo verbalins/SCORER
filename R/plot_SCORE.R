@@ -69,11 +69,13 @@ freqchart <-
 #' @export
 #' @param data A dataset loaded with [load_dataset()], and has ranks applied through [ndsecr()]
 #' @param objectives A character vector indicating the objectives to show, defaults to first two objectives
+#' @param rank Set the ranking to include when creating the pareto optimal front. Default 1, NULL removes.
+#' @param interactive Should an interactive plotly chart be created? Defaults to false.
 #' @return A ggplot2 object showing the fronts of the optimization
 #' @importFrom stats as.formula
 #' @importFrom dplyr filter select arrange if_else vars distinct_at
 #' @importFrom ggplot2 ggplot geom_point geom_text geom_line scale_y_continuous theme_classic element_text
-plot_pareto <- function(.data, objectives = .data$objective_names, interactive = FALSE) {
+plot_pareto <- function(.data, objectives = .data$objective_names, rank = 1, interactive = FALSE) {
     labelnames <- c("Improvements", "Output", "Lead Time")
     names(labelnames) <- c("minImp", "maxOut", "minLT")
 
@@ -94,10 +96,10 @@ plot_pareto <- function(.data, objectives = .data$objective_names, interactive =
             ),
             name = "Rank 1-5"
           )
-        if (length(objectives) == 2) {
+        if (length(objectives) == 2 & !is.null(rank)) {
           p <- p %>% plotly::add_trace(
             data = .data %>%
-              dplyr::filter(Rank == 1) %>%
+              dplyr::filter(Rank == rank) %>%
               dplyr::select(-Iteration, objectives[1], objectives[2]) %>%
               dplyr::arrange(objectives[1]),
             type = "scattergl",
@@ -136,8 +138,6 @@ plot_pareto <- function(.data, objectives = .data$objective_names, interactive =
           color = "Rank"
         )) +
         ggplot2::geom_point() +
-        ggplot2::geom_line(data = .data %>% dplyr::filter(Rank == 1),
-                           color = "red") +
         ggplot2::scale_y_continuous(n.breaks = 6) +
         ggplot2::theme_classic(base_size = 13, base_family = "sans") +
         ggplot2::labs(x = dplyr::if_else(objectives[1] %in% names(labelnames), labelnames[objectives[1]], objectives[1]),
@@ -146,6 +146,11 @@ plot_pareto <- function(.data, objectives = .data$objective_names, interactive =
           axis.title.x = ggplot2::element_text(vjust = -0.5),
           axis.title.y = ggplot2::element_text(vjust = 2)
         )
+
+      if (!is.null(rank)) {
+        chart <- chart + ggplot2::geom_line(data = .data %>% dplyr::filter(Rank == rank),
+                                          color = "red")
+      }
 
       if ("minLT" %in% objectives) {
         chart <- chart + ggplot2::scale_y_continuous(labels = scales::unit_format(unit = "h"))

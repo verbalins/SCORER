@@ -4,10 +4,19 @@
 \alias{plot_pareto}
 \title{Creates a 2D plot to visualize the optimization results}
 \usage{
-plot_pareto(.data, objectives = .data$objective_names, interactive = FALSE)
+plot_pareto(
+  .data,
+  objectives = .data$objective_names,
+  rank = 1,
+  interactive = FALSE
+)
 }
 \arguments{
 \item{objectives}{A character vector indicating the objectives to show, defaults to first two objectives}
+
+\item{rank}{Set the ranking to include when creating the pareto optimal front. Default 1, NULL removes.}
+
+\item{interactive}{Should an interactive plotly chart be created? Defaults to false.}
 
 \item{data}{A dataset loaded with \code{\link[=load_dataset]{load_dataset()}}, and has ranks applied through \code{\link[=ndsecr]{ndsecr()}}}
 }

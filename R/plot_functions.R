@@ -223,7 +223,7 @@ addunselected <- function(.plot, unselected_data) {
     size = I(10),
     opacity = 0.2,
     data = unselected_data,
-    showlegend = F) %>%
+    showlegend = FALSE) %>%
     plotly::layout(updatemenus = list(
       list(
         type = "buttons",
@@ -232,6 +232,44 @@ addunselected <- function(.plot, unselected_data) {
           list(method = "restyle",
                args = list("visible", c(TRUE, TRUE)),
                args2 = list("visible", c(TRUE, FALSE)),
-               label = "Toggle filtered"))))
+               label = "Toggle filtered")
+          )
+        )
+      )
     )
+}
+
+add_dropdowns <- function(.plot, objectives) {
+  axis <- c("x", "y", "z", "color")
+  augmented_obj <- c(objectives, "Rank")
+  list(create_dropdown(1, "x", augmented_obj),
+       create_dropdown(2, "y", augmented_obj),
+       create_dropdown(3, "z", augmented_obj),
+       create_dropdown(4, "color", augmented_obj))
+}
+
+create_dropdown <- function(i, axis, obj) {
+  list(
+    type = "list",
+    x = 1,
+    xanchor = "left",
+    yanchor = "top",
+    y = 0.1*i,
+    active = i-1,
+    buttons = create_buttons(axis, obj)
+  )
+}
+
+create_buttons <- function(axis, objectives) {
+  buttons <- list()
+  for (i in seq_along(objectives)) {
+    obj <- objectives[i]
+    buttons[[i]] <- list(
+      method = "update",
+      args = list(list(x = list(ACM[[obj]])),
+                  list(scene = list(xaxis = list(title = list(text = obj))))),
+      label = obj
+    )
+  }
+  buttons
 }
